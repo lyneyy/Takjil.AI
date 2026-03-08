@@ -225,8 +225,7 @@ Format JSON wajib:
 //  MODE: image — generate gambar takjil via Qwen Image 2.0
 // =============================================================
 async function handleImage(userPrompt) {
-  // Buat prompt yang lebih deskriptif untuk hasil gambar lebih baik
-  // Bersihkan kata trigger dari prompt supaya AI fokus ke nama makanannya
+  // Bersihkan kata trigger dari prompt
   const cleanPrompt = userPrompt
     .replace(/berikan|buatkan|generate|buat|tampilkan|perlihatkan|foto|gambar|image|picture|visualisasi/gi, '')
     .trim();
@@ -234,30 +233,40 @@ async function handleImage(userPrompt) {
   const imagePrompt = `Realistic high-quality food photography of Indonesian Ramadan takjil: ${cleanPrompt}. 
 Served in traditional bowl or glass, appetizing presentation, warm golden hour lighting, 
 wooden table background, vibrant colors, professional food photography, 
-8K resolution, mouth-watering, no text, no watermark.`;
+mouth-watering, no text, no watermark.`;
 
+  // wanx2.1-t2i-turbo: model text-to-image terbaru Alibaba Cloud
   const body = {
-    model: 'qwen-image-2.0-pro',
-    input: {
-      messages: [{
-        role: 'user',
-        content: [{ text: imagePrompt }]
-      }]
-    },
+    model: 'wanx2.1-t2i-turbo',
+    input: { prompt: imagePrompt },
     parameters: {
       size: '1024*1024',
+      n: 1,
       watermark: false,
-      prompt_extend: true,
     }
   };
 
-  const data = await dashscopeFetch('/services/aigc/multimodal-generation/generation', {
+  // Submit task async
+  const taskData = await dashscopeFetch('/services/aigc/text2image/image-synthesis', {
     method: 'POST',
+    headers: { 'X-DashScope-Async': 'enable' },
     body: JSON.stringify(body),
   });
 
-  const imageUrl = data?.output?.choices?.[0]?.message?.content?.[0]?.image;
-  if (!imageUrl) throw new Error('Gagal mendapatkan URL gambar dari API');
+  console.log('[image] taskData:', JSON.stringify(taskData));
+
+  const taskId = taskData?.output?.task_id;
+  if (!taskId) throw new Error(`Gagal membuat task gambar: ${JSON.stringify(taskData)}`);
+
+  // Poll sampai selesai
+  const result = await pollTask(taskId, 3000, 30);
+  console.log('[image] result:', JSON.stringify(result?.output));
+
+  const imageUrl = result?.output?.results?.[0]?.url
+    || result?.output?.result_url
+    || result?.output?.image_url;
+
+  if (!imageUrl) throw new Error(`Gagal mendapatkan URL gambar: ${JSON.stringify(result?.output)}`);
 
   return {
     mode: 'image',
