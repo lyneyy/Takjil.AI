@@ -960,7 +960,14 @@
         : deepThinking
         ? '🧠 Deep Thinking aktif... menganalisis lebih mendalam dengan Qwen Max...'
         : '✨ Sedang diproses...';
-      const loadingId = addMessage('loading', loadingText);
+      // GREETING: handle langsung di frontend, tidak perlu hit API
+      if (isGreetingPrompt && msg.length < 60) {
+        removeMessage(loadingId);
+        const greetReply = handleGreetingFrontend(msg);
+        renderChatMessage({ mode: 'greeting', greeting_text: greetReply, follow_up: ['Mau resep takjil apa hari ini?', 'Mau aku buatkan foto takjil?'] });
+        return;
+      }
+
       $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
       collapseTemplatesOnFirstChat();
 
@@ -1205,6 +1212,27 @@
       html += `</div></div>`;
       box.insertAdjacentHTML('beforeend', html);
       box.scrollTop = box.scrollHeight;
+    }
+
+    function handleGreetingFrontend(msg) {
+      const p = msg.toLowerCase();
+      if (p.includes('siapa') || p.includes('kamu') || p.includes('perkenalkan') || p.includes('apa itu')) {
+        return 'Halo! Aku **Takjil.AI** 🌙✨\n\nAku asisten AI spesialis takjil Ramadan! Aku bisa:\n- 👨‍🍳 Buatkan **resep** takjil lengkap\n- 📊 Info **nutrisi & kalori**\n- 💡 **Rekomendasi** dari bahan yang kamu punya\n- 📖 **Sejarah** takjil Indonesia\n- 🎨 **Generate foto** takjil\n- 🎬 **Generate video** tutorial memasak\n\nMau mulai dengan apa? 😊';
+      } else if (p.includes('apa kabar') || p.includes('gimana kabar')) {
+        return 'Alhamdulillah baik! 😊 Siap membantu kamu menyiapkan takjil terbaik untuk Ramadan ini 🌙\n\nMau resep takjil apa hari ini?';
+      } else if (p.includes('pagi')) {
+        return 'Selamat pagi! ☀️ Semoga harimu penuh berkah di bulan Ramadan ini.\n\nSudah ada rencana mau buat takjil apa untuk berbuka nanti?';
+      } else if (p.includes('siang')) {
+        return 'Selamat siang! 🌤️ Semangat puasanya ya!\n\nMau aku bantu cariin ide takjil untuk berbuka nanti?';
+      } else if (p.includes('sore')) {
+        return 'Selamat sore! 🌅 Sebentar lagi buka puasa nih!\n\nMasih bingung mau buat takjil apa? Ceritain aja bahan yang ada di dapur! 🍹';
+      } else if (p.includes('malam')) {
+        return 'Selamat malam! 🌙 Semoga ibadah Ramadan hari ini penuh berkah.\n\nAda yang bisa aku bantu untuk persiapan sahur atau takjil besok?';
+      } else if (p.includes('assalam') || p.includes('waalaikum')) {
+        return 'Wa\'alaikumsalam warahmatullahi wabarakatuh! 🌙\n\nSelamat datang di Takjil.AI! Mau buat takjil apa hari ini?';
+      } else {
+        return 'Halo! Selamat datang di **Takjil.AI** 🌙✨\n\nAku siap membantu kamu menemukan, membuat, dan memvisualisasikan takjil Ramadan favoritmu!\n\nCoba tanyakan resep, minta foto, atau request video tutorial! 😊';
+      }
     }
 
     function sendFollowUp(question) {
