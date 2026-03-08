@@ -5,9 +5,10 @@
 //  pernah terekspos ke browser.
 // =============================================================
 
-const DASHSCOPE_BASE = 'https://dashscope-intl.aliyuncs.com/api/v1';
+const DASHSCOPE_BASE     = 'https://dashscope-intl.aliyuncs.com/api/v1';
+const DASHSCOPE_OPENAI   = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
 
-// Helper: forward fetch ke DashScope dengan API key dari env
+// Helper: DashScope native API (untuk image & video)
 async function dashscopeFetch(path, options = {}) {
   const apiKey = process.env.DASHSCOPE_API_KEY;
   if (!apiKey) throw new Error('DASHSCOPE_API_KEY belum diset di environment variables');
@@ -22,6 +23,23 @@ async function dashscopeFetch(path, options = {}) {
     },
   });
   return res.json();
+}
+
+// Helper: OpenAI-compatible endpoint (untuk text/Qwen)
+async function dashscopeChat(model, messages, temperature = 0.7) {
+  const apiKey = process.env.DASHSCOPE_API_KEY;
+  if (!apiKey) throw new Error('DASHSCOPE_API_KEY belum diset di environment variables');
+
+  const res = await fetch(`${DASHSCOPE_OPENAI}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model, messages, temperature }),
+  });
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content || '';
 }
 
 // Helper: poll task sampai selesai (untuk image async & video)
@@ -94,12 +112,9 @@ Format JSON wajib:
     temperature: deepThinking ? 0.9 : 0.7,
   };
 
-  const data = await dashscopeFetch('/services/aigc/text-generation/generation', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-
-  const raw = data?.output?.choices?.[0]?.message?.content || '';
+  const model = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp  = deepThinking ? 0.9 : 0.7;
+  const raw   = await dashscopeChat(model, messages, temp);
   const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
   return JSON.parse(cleaned);
 }
@@ -131,20 +146,15 @@ Format JSON wajib:
 }`;
 
   const body = {
-    model: deepThinking ? 'qwen-max' : 'qwen-plus',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userPrompt }
-    ],
-    temperature: deepThinking ? 0.9 : 0.3,
-  };
+  };  // end body (unused, kept for reference)
 
-  const data = await dashscopeFetch('/services/aigc/text-generation/generation', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-
-  const raw     = data?.output?.choices?.[0]?.message?.content || '';
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userPrompt }
+  ];
+  const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp    = deepThinking ? 0.9 : 0.3;
+  const raw     = await dashscopeChat(model, messages, temp);
   const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
   return JSON.parse(cleaned);
 }
@@ -175,20 +185,15 @@ Format JSON wajib:
 }`;
 
   const body = {
-    model: deepThinking ? 'qwen-max' : 'qwen-plus',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userPrompt }
-    ],
-    temperature: deepThinking ? 0.9 : 0.8,
-  };
+  };  // end body (unused, kept for reference)
 
-  const data = await dashscopeFetch('/services/aigc/text-generation/generation', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-
-  const raw     = data?.output?.choices?.[0]?.message?.content || '';
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userPrompt }
+  ];
+  const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp    = deepThinking ? 0.9 : 0.8;
+  const raw     = await dashscopeChat(model, messages, temp);
   const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
   return JSON.parse(cleaned);
 }
@@ -212,20 +217,15 @@ Format JSON wajib:
 }`;
 
   const body = {
-    model: deepThinking ? 'qwen-max' : 'qwen-plus',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userPrompt }
-    ],
-    temperature: deepThinking ? 0.9 : 0.7,
-  };
+  };  // end body (unused, kept for reference)
 
-  const data = await dashscopeFetch('/services/aigc/text-generation/generation', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-
-  const raw     = data?.output?.choices?.[0]?.message?.content || '';
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userPrompt }
+  ];
+  const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp    = deepThinking ? 0.9 : 0.7;
+  const raw     = await dashscopeChat(model, messages, temp);
   const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
   return JSON.parse(cleaned);
 }
