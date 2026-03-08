@@ -950,7 +950,7 @@
       const effectiveMode  = looksLikeVideo ? 'video' : looksLikeImage ? 'image' : currentMode;
 
       const loadingText = effectiveMode === 'video'
-        ? '🎬 Membuat video (maks 15 detik, proses 1-5 menit)... mohon tunggu ya!'
+        ? '🎬 Membuat visual sinematik & skrip tutorial... sebentar ya!'
         : effectiveMode === 'image'
         ? '🎨 Membuat gambar... sebentar ya!'
         : deepThinking
@@ -1176,17 +1176,33 @@
 
       /* ---- VIDEO ---- */
       else if (mode === 'video') {
-        if (d.video_url) {
-          html += `<div style="border-radius:.75rem;overflow:hidden;margin-bottom:.75rem;border:1px solid rgba(251,191,36,.2);background:#000">
-            <video controls style="width:100%;height:auto;display:block;max-height:400px">
-              <source src="${d.video_url}" type="video/mp4"/>
-              Browser kamu tidak mendukung video.
-            </video>
+        // Gambar sinematik sebagai visual utama
+        if (d.image_url) {
+          html += `<div style="border-radius:.75rem;overflow:hidden;margin-bottom:.75rem;border:1px solid rgba(251,191,36,.2);position:relative">
+            <img src="${d.image_url}" alt="Visual takjil" style="width:100%;height:auto;display:block"/>
+            <div style="position:absolute;top:.5rem;left:.5rem;background:rgba(0,0,0,.6);border-radius:.375rem;padding:.2rem .5rem;font-size:.7rem;color:#fcd34d">🎬 Visual Sinematik</div>
           </div>`;
-          html += `<a href="${d.video_url}" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:.5rem;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;font-size:.8rem;text-decoration:none">
-            ⬇️ Download Video (valid 24 jam)
-          </a>`;
-          html += `<div class="chat-tips-box" style="margin-top:.75rem"><div class="chat-tips-icon">⚠️</div><div class="chat-tips-content"><h4>Penting</h4><p>URL video hanya valid 24 jam. Segera download jika ingin disimpan.</p><p style="margin-top:.4rem;color:#fcd34d;">⏱️ Durasi video maksimal <strong>15 detik</strong>.</p></div></div>`;
+        }
+        // Skrip tutorial
+        if (d.script_intro) {
+          html += `<div style="margin-bottom:.75rem;padding:.75rem;background:rgba(6,78,59,.4);border-radius:.75rem;border:1px solid rgba(16,185,129,.2)">
+            <p style="font-size:.7rem;color:#6ee7b7;margin-bottom:.4rem;font-weight:600">🎙️ SKRIP TUTORIAL</p>
+            <p style="font-size:.875rem;color:#fde68a;font-style:italic;margin-bottom:.75rem">"${d.script_intro}"</p>`;
+          if (d.steps?.length) {
+            d.steps.forEach((s, i) => {
+              html += `<div style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.4rem">
+                <span style="background:#10b981;color:#022c22;border-radius:50%;width:1.2rem;height:1.2rem;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;margin-top:.1rem">${i+1}</span>
+                <p style="font-size:.85rem;color:#d1fae5">${s}</p>
+              </div>`;
+            });
+          }
+          if (d.script_outro) {
+            html += `<p style="font-size:.875rem;color:#fde68a;font-style:italic;margin-top:.5rem">"${d.script_outro}"</p>`;
+          }
+          html += `</div>`;
+        }
+        if (d.tips) {
+          html += `<div class="chat-tips-box"><div class="chat-tips-icon">💡</div><div class="chat-tips-content"><h4>Tips</h4><p>${d.tips}</p></div></div>`;
         }
       }
 
