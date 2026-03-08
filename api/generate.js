@@ -140,9 +140,6 @@ Format JSON wajib:
   "suitable_for": ["Anak-anak", "Dewasa"]
 }`;
 
-  const body = {
-  };  // end body (unused, kept for reference)
-
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user',   content: userPrompt }
@@ -179,9 +176,6 @@ Format JSON wajib:
   ]
 }`;
 
-  const body = {
-  };  // end body (unused, kept for reference)
-
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user',   content: userPrompt }
@@ -210,9 +204,6 @@ Format JSON wajib:
   "fun_facts": ["Fakta 1", "Fakta 2", "Fakta 3"],
   "regional_variations": ["Variasi 1", "Variasi 2"]
 }`;
-
-  const body = {
-  };  // end body (unused, kept for reference)
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -312,10 +303,48 @@ professional cooking video style.`;
 }
 
 // =============================================================
+//  INTENT DETECTION — deteksi mode dari kalimat bebas user
+// =============================================================
+function detectMode(prompt, explicitMode) {
+  if (explicitMode && explicitMode !== 'auto') return explicitMode;
+
+  const p = prompt.toLowerCase();
+
+  const imageKeywords = [
+    'foto', 'gambar', 'image', 'picture', 'tampilkan gambar',
+    'berikan foto', 'buatkan foto', 'generate gambar', 'buat gambar',
+    'perlihatkan', 'tampilkan', 'fotokan', 'visualisasi', 'show me'
+  ];
+  const videoKeywords = [
+    'video', 'film', 'animasi', 'rekaman', 'buatkan video', 'buat video',
+    'generate video', 'tonton', 'clip', 'tutorial video', 'video masak'
+  ];
+  const nutritionKeywords = [
+    'kalori', 'nutrisi', 'gizi', 'protein', 'karbohidrat', 'lemak',
+    'kandungan', 'nilai gizi', 'diet', 'kkal', 'berapa kalori', 'info gizi'
+  ];
+  const recommendKeywords = [
+    'punya bahan', 'ada bahan', 'bahan yang ada', 'hanya punya', 'cuma punya',
+    'pakai bahan', 'sisa bahan', 'rekomendasi', 'rekomendasikan', 'sarankan',
+    'buat apa', 'masak apa', 'takjil apa'
+  ];
+  const storyKeywords = [
+    'sejarah', 'asal', 'asal usul', 'asal-usul', 'cerita', 'kisah',
+    'tradisi', 'budaya', 'history', 'berasal', 'daerah mana', 'makna', 'filosofi'
+  ];
+
+  if (imageKeywords.some(k => p.includes(k)))     return 'image';
+  if (videoKeywords.some(k => p.includes(k)))     return 'video';
+  if (nutritionKeywords.some(k => p.includes(k))) return 'nutrition';
+  if (recommendKeywords.some(k => p.includes(k))) return 'recommend';
+  if (storyKeywords.some(k => p.includes(k)))     return 'story';
+  return 'recipe';
+}
+
+// =============================================================
 //  MAIN HANDLER — entry point Vercel
 // =============================================================
 export default async function handler(req, res) {
-  // CORS — izinkan semua origin (untuk hackathon)
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -323,11 +352,15 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ success: false, error: 'Method not allowed' });
 
-  const { mode, prompt, deepThinking = false } = req.body || {};
+  const { mode: rawMode, prompt, deepThinking = false } = req.body || {};
 
-  if (!mode || !prompt) {
-    return res.status(400).json({ success: false, error: 'mode dan prompt wajib diisi' });
+  if (!prompt) {
+    return res.status(400).json({ success: false, error: 'prompt wajib diisi' });
   }
+
+  // Selalu jalankan intent detection — mode dari frontend hanya sebagai hint
+  const mode = detectMode(prompt, rawMode);
+  console.log(`[generate] rawMode=${rawMode} → detectedMode=${mode}`);
 
   try {
     let data;
