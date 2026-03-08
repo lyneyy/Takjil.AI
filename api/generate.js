@@ -1,14 +1,18 @@
 // =============================================================
 //  Takjil AI — Vercel Serverless Function
 //  Proxy aman ke Alibaba Cloud DashScope (Singapore region)
+//  API key tersimpan di Vercel Environment Variables, tidak
+//  pernah terekspos ke browser.
 // =============================================================
 
 const DASHSCOPE_BASE   = 'https://dashscope-intl.aliyuncs.com/api/v1';
 const DASHSCOPE_OPENAI = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
 
+// Helper: DashScope native API (untuk image & video)
 async function dashscopeFetch(path, options = {}) {
   const apiKey = process.env.DASHSCOPE_API_KEY;
   if (!apiKey) throw new Error('DASHSCOPE_API_KEY belum diset di environment variables');
+
   const url = `${DASHSCOPE_BASE}${path}`;
   const res  = await fetch(url, {
     ...options,
@@ -21,9 +25,11 @@ async function dashscopeFetch(path, options = {}) {
   return res.json();
 }
 
+// Helper: OpenAI-compatible endpoint (untuk text/Qwen)
 async function dashscopeChat(model, messages, temperature = 0.7) {
   const apiKey = process.env.DASHSCOPE_API_KEY;
   if (!apiKey) throw new Error('DASHSCOPE_API_KEY belum diset di environment variables');
+
   const res = await fetch(`${DASHSCOPE_OPENAI}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -36,7 +42,8 @@ async function dashscopeChat(model, messages, temperature = 0.7) {
   return data?.choices?.[0]?.message?.content || '';
 }
 
-async function pollTask(taskId, intervalMs = 8000, maxTries = 60) {
+// Helper: poll task sampai selesai (untuk video async)
+async function pollTask(taskId, intervalMs = 8000, maxTries = 45) {
   for (let i = 0; i < maxTries; i++) {
     await new Promise(r => setTimeout(r, intervalMs));
     const result = await dashscopeFetch(`/tasks/${taskId}`);
@@ -45,17 +52,19 @@ async function pollTask(taskId, intervalMs = 8000, maxTries = 60) {
     if (status === 'FAILED' || status === 'CANCELED') {
       throw new Error(`Task ${status}: ${result?.message || 'Unknown error'}`);
     }
+    // PENDING / RUNNING → lanjut poll
   }
   throw new Error('Timeout: task tidak selesai dalam waktu yang ditentukan');
 }
 
 // =============================================================
-//  MODE: recipe
+//  MODE: recipe — generate resep lengkap via Qwen
 // =============================================================
 async function handleRecipe(userPrompt, deepThinking = false) {
   const systemPrompt = deepThinking
     ? `Kamu adalah chef AI master kelas dunia spesialis kuliner Ramadan Indonesia.
 Lakukan analisis mendalam dan berikan resep yang sangat detail dan profesional.
+Pertimbangkan: teknik memasak tradisional, variasi regional, tips nutrisi, dan substitusi bahan.
 Balas HANYA dengan JSON valid, tanpa teks lain, tanpa markdown code block.
 Format JSON wajib:
 {
@@ -69,7 +78,7 @@ Format JSON wajib:
   "preparation_time": "20 Menit",
   "difficulty": "Mudah/Sedang/Sulit",
   "ingredients": [
-    {"name": "Nama Bahan", "quantity": 2, "unit": "buah", "price_idr": 5000, "substitution": "Alternatif bahan"}
+    {"name": "Nama Bahan", "quantity": 2, "unit": "buah", "price_idr": 5000, "substitution": "Alternatif bahan jika tidak ada"}
   ],
   "cooking_steps": ["Langkah sangat detail 1", "Langkah sangat detail 2"],
   "tips": "Tips chef profesional yang sangat detail",
@@ -100,15 +109,15 @@ Format JSON wajib:
     { role: 'system', content: systemPrompt },
     { role: 'user',   content: userPrompt }
   ];
-  const model = deepThinking ? 'qwen-max' : 'qwen-plus';
-  const temp  = deepThinking ? 0.9 : 0.7;
-  const raw   = await dashscopeChat(model, messages, temp);
-  const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp    = deepThinking ? 0.9 : 0.7;
+  const raw     = await dashscopeChat(model, messages, temp);
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(cleaned);
 }
 
 // =============================================================
-//  MODE: nutrition
+//  MODE: nutrition — info kalori & gizi via Qwen
 // =============================================================
 async function handleNutrition(userPrompt, deepThinking = false) {
   const systemPrompt = `Kamu adalah ahli gizi spesialis makanan Ramadan.
@@ -133,6 +142,7 @@ Format JSON wajib:
   "suitable_for": ["Anak-anak", "Dewasa"],
   "follow_up": ["Mau aku buatkan resepnya?", "Mau lihat foto takjil ini?"]
 }`;
+
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user',   content: userPrompt }
@@ -140,12 +150,12 @@ Format JSON wajib:
   const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
   const temp    = deepThinking ? 0.9 : 0.3;
   const raw     = await dashscopeChat(model, messages, temp);
-  const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(cleaned);
 }
 
 // =============================================================
-//  MODE: recommend
+//  MODE: recommend — rekomendasi dari bahan yang ada
 // =============================================================
 async function handleRecommend(userPrompt, deepThinking = false) {
   const systemPrompt = `Kamu adalah chef kreatif spesialis takjil Ramadan.
@@ -169,6 +179,7 @@ Format JSON wajib:
   ],
   "follow_up": ["Mau aku buatkan resep lengkapnya?", "Mau lihat foto salah satunya?"]
 }`;
+
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user',   content: userPrompt }
@@ -176,12 +187,12 @@ Format JSON wajib:
   const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
   const temp    = deepThinking ? 0.9 : 0.8;
   const raw     = await dashscopeChat(model, messages, temp);
-  const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(cleaned);
 }
 
 // =============================================================
-//  MODE: story
+//  MODE: story — sejarah & asal usul takjil
 // =============================================================
 async function handleStory(userPrompt, deepThinking = false) {
   const systemPrompt = `Kamu adalah sejarawan kuliner spesialis makanan Ramadan Indonesia.
@@ -198,6 +209,7 @@ Format JSON wajib:
   "regional_variations": ["Variasi 1", "Variasi 2"],
   "follow_up": ["Mau aku buatkan resepnya?", "Mau lihat foto takjil ini?"]
 }`;
+
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user',   content: userPrompt }
@@ -205,14 +217,15 @@ Format JSON wajib:
   const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
   const temp    = deepThinking ? 0.9 : 0.7;
   const raw     = await dashscopeChat(model, messages, temp);
-  const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(cleaned);
 }
 
 // =============================================================
-//  MODE: image — generate gambar via wanx-v1
+//  MODE: image — generate gambar takjil via wan2.6-image
 // =============================================================
 async function handleImage(userPrompt) {
+  // Bersihkan kata trigger supaya AI fokus ke nama makanannya
   const cleanPrompt = userPrompt
     .replace(/berikan|buatkan|generate|buat|tampilkan|perlihatkan|foto|gambar|image|picture|visualisasi/gi, '')
     .trim();
@@ -222,57 +235,58 @@ Served in traditional bowl or glass, appetizing presentation, warm golden hour l
 wooden table background, vibrant colors, professional food photography, 
 8K resolution, mouth-watering, no text, no watermark.`;
 
-  // Submit async task
-  const taskData = await dashscopeFetch('/services/aigc/text2image/image-synthesis', {
+  const body = {
+    model: 'wan2.6-image',  // ✅ Model yang benar untuk Singapore region
+    input: {
+      messages: [{
+        role: 'user',
+        content: [{ text: imagePrompt }]
+      }]
+    },
+    parameters: {
+      size: '1024*1024',
+      watermark: false,
+      prompt_extend: true,
+      n: 1,
+    }
+  };
+
+  // Sync call — tidak perlu polling untuk image
+  const data = await dashscopeFetch('/services/aigc/multimodal-generation/generation', {
     method: 'POST',
-    headers: { 'X-DashScope-Async': 'enable' },
-    body: JSON.stringify({
-      model: 'wanx-v1',
-      input: { prompt: imagePrompt },
-      parameters: {
-        style: '<photography>',
-        size: '1024*1024',
-        n: 1,
-        watermark: false,
-      }
-    }),
+    body: JSON.stringify(body),
   });
 
-  const taskId = taskData?.output?.task_id;
-  if (!taskId) {
-    console.error('[image] taskData:', JSON.stringify(taskData));
-    throw new Error(`Gagal membuat task gambar: ${JSON.stringify(taskData?.message || taskData)}`);
-  }
-
-  // Poll sampai selesai
-  const result   = await pollTask(taskId, 5000, 30);
-  const imageUrl = result?.output?.results?.[0]?.url
-                || result?.output?.result?.[0]?.url
-                || result?.output?.url;
+  // Ambil URL gambar dari response content array
+  const contentArr = data?.output?.choices?.[0]?.message?.content;
+  const imageUrl   = Array.isArray(contentArr)
+    ? contentArr.find(c => c.image)?.image
+    : null;
 
   if (!imageUrl) {
-    console.error('[image] poll result:', JSON.stringify(result));
+    console.error('[handleImage] Response dari API:', JSON.stringify(data));
     throw new Error('Gagal mendapatkan URL gambar dari API');
   }
 
   return {
     mode: 'image',
     recipe_name: 'Gambar Takjil Generated',
-    description: cleanPrompt,
+    description: userPrompt,
     image_url: imageUrl,
     visual_prompt: imagePrompt,
   };
 }
 
 // =============================================================
-//  MODE: video — generate video via wan2.6-t2v
+//  MODE: video — generate video takjil via wan2.6-t2v (async)
 // =============================================================
 async function handleVideo(userPrompt) {
+  // Deteksi durasi dari prompt user (maks 15 detik per API limit)
   let duration = 5;
-  const durMatch = userPrompt.match(/(\d+)\s*(detik|sekon|second|s\b)/i);
+  const durMatch = userPrompt.match(/(\d+)\s*(detik|sekon|second|s)/i);
   if (durMatch) {
     const requested = parseInt(durMatch[1]);
-    duration = Math.min(Math.max(requested, 2), 15);
+    duration = Math.min(Math.max(requested, 2), 15); // min 2s, max 15s
   }
 
   const videoPrompt = `Indonesian Ramadan iftar food preparation: ${userPrompt}. 
@@ -280,35 +294,34 @@ Cinematic food video, warm kitchen lighting, hands preparing traditional food,
 close-up shots of ingredients, steam rising, beautiful plating, 
 professional cooking video style.`;
 
+  const body = {
+    model: 'wan2.6-t2v',
+    input: { prompt: videoPrompt },
+    parameters: {
+      size: '1280*720',
+      duration: duration,
+      watermark: false,
+      prompt_extend: true,
+    }
+  };
+
+  // Step 1: Submit async task
   const taskData = await dashscopeFetch('/services/aigc/video-generation/video-synthesis', {
     method: 'POST',
     headers: { 'X-DashScope-Async': 'enable' },
-    body: JSON.stringify({
-      model: 'wan2.6-t2v',
-      input: { prompt: videoPrompt },
-      parameters: {
-        size: '1280*720',
-        duration: duration,
-        watermark: false,
-        prompt_extend: true,
-      }
-    }),
+    body: JSON.stringify(body),
   });
 
   const taskId = taskData?.output?.task_id;
   if (!taskId) {
-    console.error('[video] taskData:', JSON.stringify(taskData));
-    throw new Error(`Gagal membuat task video: ${JSON.stringify(taskData?.message || taskData)}`);
+    console.error('[handleVideo] taskData:', JSON.stringify(taskData));
+    throw new Error('Gagal membuat task video');
   }
 
+  // Step 2: Poll sampai selesai (video butuh 1-5 menit)
   const result   = await pollTask(taskId, 8000, 45);
-  const videoUrl = result?.output?.video_url
-                || result?.output?.results?.[0]?.url;
-
-  if (!videoUrl) {
-    console.error('[video] poll result:', JSON.stringify(result));
-    throw new Error('Gagal mendapatkan URL video');
-  }
+  const videoUrl = result?.output?.video_url;
+  if (!videoUrl) throw new Error('Gagal mendapatkan URL video');
 
   return {
     mode: 'video',
@@ -316,12 +329,11 @@ professional cooking video style.`;
     description: userPrompt,
     video_url: videoUrl,
     video_prompt: videoPrompt,
-    duration: duration,
   };
 }
 
 // =============================================================
-//  GREETING
+//  MODE: greeting — sapaan ramah dari Takjil.AI
 // =============================================================
 function isGreeting(prompt) {
   const p = prompt.toLowerCase().trim();
@@ -340,21 +352,55 @@ function handleGreeting(prompt) {
   let reply = '';
 
   if (p.includes('siapa') || p.includes('kamu') || p.includes('perkenalkan') || p.includes('kenalan') || p.includes('apa itu')) {
-    reply = `Halo! Aku **Takjil.AI** 🌙✨\n\nAku adalah asisten AI spesialis takjil Ramadan yang dibuat dengan ❤️ menggunakan teknologi Alibaba Cloud.\n\n**Yang bisa aku lakukan:**\n- 👨‍🍳 **Resep** — buatkan resep takjil lengkap\n- 📊 **Nutrisi** — info kalori & kandungan gizi\n- 💡 **Rekomendasi** — saran takjil dari bahan yang kamu punya\n- 📖 **Cerita** — sejarah & asal usul takjil Indonesia\n- 🎨 **Foto** — generate gambar takjil\n- 🎬 **Video** — buat video tutorial memasak takjil\n\nMau mulai dengan apa? 😊`;
+    reply = `Halo! Aku **Takjil.AI** 🌙✨
+
+Aku adalah asisten AI spesialis takjil Ramadan yang dibuat dengan ❤️ menggunakan teknologi Alibaba Cloud.
+
+**Yang bisa aku lakukan:**
+- 👨‍🍳 **Resep** — buatkan resep takjil lengkap dengan bahan & langkah
+- 📊 **Nutrisi** — info kalori & kandungan gizi takjil
+- 💡 **Rekomendasi** — saran takjil dari bahan yang kamu punya
+- 📖 **Cerita** — sejarah & asal usul takjil Indonesia
+- 🎨 **Foto** — generate gambar takjil yang menggugah selera
+- 🎬 **Video** — buat video tutorial memasak takjil
+
+Mau mulai dengan apa? 😊`;
   } else if (p.includes('apa kabar') || p.includes('gimana kabar')) {
-    reply = `Alhamdulillah baik! Siap membantu kamu menyiapkan takjil terbaik untuk Ramadan ini 🌙\n\nMau resep takjil apa hari ini?`;
+    reply = `Alhamdulillah baik! Siap membantu kamu menyiapkan takjil terbaik untuk Ramadan ini 🌙
+
+Mau resep takjil apa hari ini?`;
   } else if (p.includes('pagi')) {
-    reply = `Selamat pagi! ☀️ Semoga harimu penuh berkah di bulan Ramadan ini.\n\nSudah siap merencanakan takjil berbuka hari ini? 😊`;
+    reply = `Selamat pagi! ☀️ Semoga harimu penuh berkah di bulan Ramadan ini.
+
+Sudah siap merencanakan takjil berbuka hari ini? Aku bisa bantu buatkan resep, foto, bahkan video tutorial-nya! 😊`;
   } else if (p.includes('siang')) {
-    reply = `Selamat siang! 🌤️ Semangat puasanya ya!\n\nMau aku bantu cariin ide takjil untuk berbuka nanti? 😊`;
+    reply = `Selamat siang! 🌤️ Semangat puasanya ya!
+
+Mau aku bantu cariin ide takjil untuk berbuka nanti? Tinggal bilang bahan yang kamu punya, aku bisa rekomendasikan takjil yang cocok 😊`;
   } else if (p.includes('sore')) {
-    reply = `Selamat sore! 🌅 Sebentar lagi buka puasa nih!\n\nMasih bingung mau buat takjil apa? 🍹`;
+    reply = `Selamat sore! 🌅 Sebentar lagi buka puasa nih!
+
+Masih bingung mau buat takjil apa? Ceritain aja bahan yang ada di dapur, aku langsung kasih rekomendasinya! 🍹`;
   } else if (p.includes('malam')) {
-    reply = `Selamat malam! 🌙 Semoga ibadah Ramadan hari ini penuh berkah.\n\nAda yang bisa aku bantu untuk persiapan sahur atau takjil besok? 😊`;
+    reply = `Selamat malam! 🌙 Semoga ibadah Ramadan hari ini penuh berkah.
+
+Ada yang bisa aku bantu untuk persiapan sahur atau takjil besok? 😊`;
   } else if (p.includes('assalam') || p.includes('waalaikum')) {
-    reply = `Wa'alaikumsalam warahmatullahi wabarakatuh! 🌙\n\nSelamat datang di Takjil.AI! Aku siap membantu kamu menyiapkan takjil terbaik. Mau buat apa hari ini?`;
+    reply = `Wa'alaikumsalam warahmatullahi wabarakatuh! 🌙
+
+Selamat datang di Takjil.AI! Aku siap membantu kamu menyiapkan takjil terbaik untuk berbuka puasa. Mau buat apa hari ini?`;
   } else {
-    reply = `Halo! Selamat datang di **Takjil.AI** 🌙✨\n\nAku siap membantu kamu menemukan, membuat, dan memvisualisasikan takjil Ramadan favoritmu!\n\nCoba tanyakan:\n- *"Resep es teler"*\n- *"Berikan foto kolak pisang"*\n- *"Buatkan video cara membuat cendol"*\n- *"Berapa kalori es campur?"*\n\nMau mulai dengan apa? 😊`;
+    reply = `Halo! Selamat datang di **Takjil.AI** 🌙✨
+
+Aku siap membantu kamu menemukan, membuat, dan memvisualisasikan takjil Ramadan favoritmu!
+
+Coba tanyakan:
+- *"Resep es teler"*
+- *"Berikan foto kolak pisang"*
+- *"Buatkan video cara membuat cendol"*
+- *"Berapa kalori es campur?"*
+
+Mau mulai dengan apa? 😊`;
   }
 
   return {
@@ -366,32 +412,54 @@ function handleGreeting(prompt) {
 }
 
 // =============================================================
-//  INTENT DETECTION
+//  INTENT DETECTION — deteksi mode dari kalimat bebas user
 // =============================================================
-function detectMode(prompt) {
+function detectMode(prompt, explicitMode) {
   const p = prompt.toLowerCase().trim();
 
+  // Greeting check — always wins
   if (isGreeting(prompt)) return 'greeting';
 
+  // Media words ALWAYS win — intent yang jelas
   const videoWords = ['video', 'film', 'animasi', 'rekaman', 'klip', 'clip'];
   const imageWords = ['foto', 'gambar', 'image', 'picture', 'visualisasi', 'ilustrasi'];
   if (videoWords.some(w => p.includes(w))) return 'video';
   if (imageWords.some(w => p.includes(w))) return 'image';
 
-  const nutritionWords = ['kalori', 'nutrisi', 'gizi', 'protein', 'karbohidrat', 'lemak', 'kandungan', 'nilai gizi', 'diet', 'kkal', 'berapa kalori', 'info gizi', 'vitamin', 'mineral'];
+  // Cek explicitMode dari frontend
+  if (explicitMode && explicitMode !== 'auto') return explicitMode;
+
+  // Nutrition keywords
+  const nutritionWords = [
+    'kalori', 'nutrisi', 'gizi', 'protein', 'karbohidrat', 'lemak',
+    'kandungan', 'nilai gizi', 'diet', 'kkal', 'berapa kalori', 'info gizi',
+    'kandungan gizi', 'seberapa sehat', 'vitamin', 'mineral'
+  ];
   if (nutritionWords.some(w => p.includes(w))) return 'nutrition';
 
-  const recommendWords = ['punya bahan', 'ada bahan', 'bahan yang ada', 'hanya punya', 'cuma punya', 'pakai bahan', 'sisa bahan', 'rekomendasi', 'rekomendasikan', 'sarankan', 'buat apa', 'masak apa', 'takjil apa', 'ide takjil', 'enaknya apa', 'cocok apa'];
+  // Recommend keywords
+  const recommendWords = [
+    'punya bahan', 'ada bahan', 'bahan yang ada', 'hanya punya', 'cuma punya',
+    'pakai bahan', 'sisa bahan', 'rekomendasi', 'rekomendasikan', 'sarankan',
+    'buat apa', 'masak apa', 'takjil apa', 'ide takjil', 'enaknya apa',
+    'mau buat apa', 'cocok apa', 'ada apa'
+  ];
   if (recommendWords.some(w => p.includes(w))) return 'recommend';
 
-  const storyWords = ['sejarah', 'asal', 'asal usul', 'cerita', 'kisah', 'tradisi', 'budaya', 'history', 'berasal', 'daerah mana', 'makna', 'filosofi', 'asal mula'];
+  // Story keywords
+  const storyWords = [
+    'sejarah', 'asal', 'asal usul', 'asal-usul', 'cerita', 'kisah',
+    'tradisi', 'budaya', 'history', 'berasal', 'daerah mana', 'makna',
+    'filosofi', 'asal mula', 'kenapa disebut', 'mengapa namanya'
+  ];
   if (storyWords.some(w => p.includes(w))) return 'story';
 
+  // Default: recipe
   return 'recipe';
 }
 
 // =============================================================
-//  MAIN HANDLER
+//  MAIN HANDLER — entry point Vercel
 // =============================================================
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
@@ -401,17 +469,19 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ success: false, error: 'Method not allowed' });
 
-  const { prompt, deepThinking = false } = req.body || {};
+  const { mode: rawMode, prompt, deepThinking = false } = req.body || {};
 
   if (!prompt) {
     return res.status(400).json({ success: false, error: 'prompt wajib diisi' });
   }
 
-  const mode = detectMode(prompt);
-  console.log(`[generate] detectedMode=${mode} prompt="${prompt.substring(0,50)}"`);
+  // Selalu jalankan intent detection
+  const mode = detectMode(prompt, rawMode);
+  console.log(`[generate] rawMode=${rawMode} → detectedMode=${mode}`);
 
   try {
     let data;
+
     switch (mode) {
       case 'greeting':  data = handleGreeting(prompt);                      break;
       case 'recipe':    data = await handleRecipe(prompt, deepThinking);    break;
@@ -423,7 +493,9 @@ export default async function handler(req, res) {
       default:
         return res.status(400).json({ success: false, error: `Mode tidak dikenal: ${mode}` });
     }
+
     return res.status(200).json({ success: true, data });
+
   } catch (err) {
     console.error(`[generate] Error mode=${mode}:`, err.message);
     return res.status(500).json({
