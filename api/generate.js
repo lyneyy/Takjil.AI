@@ -401,39 +401,60 @@ Mau mulai dengan apa? 😊`;
 function detectMode(prompt, explicitMode) {
   if (explicitMode && explicitMode !== 'auto') return explicitMode;
 
-  const p = prompt.toLowerCase();
+  const p = prompt.toLowerCase().trim();
 
   // Greeting check
   if (isGreeting(prompt)) return 'greeting';
 
-  const imageKeywords = [
-    'foto', 'gambar', 'image', 'picture', 'tampilkan gambar',
-    'berikan foto', 'buatkan foto', 'generate gambar', 'buat gambar',
-    'perlihatkan', 'tampilkan', 'fotokan', 'visualisasi', 'show me'
-  ];
-  const videoKeywords = [
-    'video', 'film', 'animasi', 'rekaman', 'buatkan video', 'buat video',
-    'generate video', 'tonton', 'clip', 'tutorial video', 'video masak'
-  ];
-  const nutritionKeywords = [
-    'kalori', 'nutrisi', 'gizi', 'protein', 'karbohidrat', 'lemak',
-    'kandungan', 'nilai gizi', 'diet', 'kkal', 'berapa kalori', 'info gizi'
-  ];
-  const recommendKeywords = [
-    'punya bahan', 'ada bahan', 'bahan yang ada', 'hanya punya', 'cuma punya',
-    'pakai bahan', 'sisa bahan', 'rekomendasi', 'rekomendasikan', 'sarankan',
-    'buat apa', 'masak apa', 'takjil apa'
-  ];
-  const storyKeywords = [
-    'sejarah', 'asal', 'asal usul', 'asal-usul', 'cerita', 'kisah',
-    'tradisi', 'budaya', 'history', 'berasal', 'daerah mana', 'makna', 'filosofi'
+  // --- ACTION WORDS (kata kerja perintah) ---
+  // Semua variasi "minta sesuatu" dalam bahasa Indonesia sehari-hari
+  const actionWords = [
+    'bikinin', 'bikin', 'buatin', 'buatkan', 'buat', 'kasih', 'kasih tau',
+    'berikan', 'beri', 'tampilkan', 'tampilkan', 'tunjukin', 'tunjukkan',
+    'generate', 'bisa buat', 'tolong buat', 'cobain', 'coba buat',
+    'minta', 'pengen', 'pengen liat', 'mau liat', 'mau tau',
+    'cariin', 'cari', 'bagaimana cara', 'gimana cara', 'cara membuat',
+    'cara bikin', 'langkah', 'resep', 'tutorial'
   ];
 
-  if (imageKeywords.some(k => p.includes(k)))     return 'image';
-  if (videoKeywords.some(k => p.includes(k)))     return 'video';
-  if (nutritionKeywords.some(k => p.includes(k))) return 'nutrition';
-  if (recommendKeywords.some(k => p.includes(k))) return 'recommend';
-  if (storyKeywords.some(k => p.includes(k)))     return 'story';
+  // --- MEDIA WORDS ---
+  const videoWords = ['video', 'film', 'animasi', 'rekaman', 'klip', 'clip'];
+  const imageWords = ['foto', 'gambar', 'image', 'picture', 'visualisasi', 'ilustrasi'];
+
+  // Cek apakah ada kata media eksplisit
+  const hasVideoWord = videoWords.some(w => p.includes(w));
+  const hasImageWord = imageWords.some(w => p.includes(w));
+
+  // Pattern: [action] + [media] + [makanan]  → misal "bikinin video es kopyor"
+  if (hasVideoWord) return 'video';
+  if (hasImageWord) return 'image';
+
+  // --- NUTRITION KEYWORDS ---
+  const nutritionWords = [
+    'kalori', 'nutrisi', 'gizi', 'protein', 'karbohidrat', 'lemak',
+    'kandungan', 'nilai gizi', 'diet', 'kkal', 'berapa kalori', 'info gizi',
+    'kandungan gizi', 'seberapa sehat', 'vitamin', 'mineral'
+  ];
+  if (nutritionWords.some(w => p.includes(w))) return 'nutrition';
+
+  // --- RECOMMEND KEYWORDS ---
+  const recommendWords = [
+    'punya bahan', 'ada bahan', 'bahan yang ada', 'hanya punya', 'cuma punya',
+    'pakai bahan', 'sisa bahan', 'rekomendasi', 'rekomendasikan', 'sarankan',
+    'buat apa', 'masak apa', 'takjil apa', 'ide takjil', 'enaknya apa',
+    'mau buat apa', 'cocok apa', 'ada apa'
+  ];
+  if (recommendWords.some(w => p.includes(w))) return 'recommend';
+
+  // --- STORY KEYWORDS ---
+  const storyWords = [
+    'sejarah', 'asal', 'asal usul', 'asal-usul', 'cerita', 'kisah',
+    'tradisi', 'budaya', 'history', 'berasal', 'daerah mana', 'makna',
+    'filosofi', 'asal mula', 'kenapa disebut', 'mengapa namanya'
+  ];
+  if (storyWords.some(w => p.includes(w))) return 'story';
+
+  // Default: recipe
   return 'recipe';
 }
 
