@@ -221,9 +221,15 @@ Format JSON wajib:
 // =============================================================
 async function handleImage(userPrompt) {
   // Buat prompt yang lebih deskriptif untuk hasil gambar lebih baik
-  const imagePrompt = `Beautiful Indonesian Ramadan iftar food photography: ${userPrompt}. 
-Appetizing, warm golden lighting, traditional wooden table, elegant plating, 
-high quality food photography style, vibrant colors, shallow depth of field.`;
+  // Bersihkan kata trigger dari prompt supaya AI fokus ke nama makanannya
+  const cleanPrompt = userPrompt
+    .replace(/berikan|buatkan|generate|buat|tampilkan|perlihatkan|foto|gambar|image|picture|visualisasi/gi, '')
+    .trim();
+
+  const imagePrompt = `Realistic high-quality food photography of Indonesian Ramadan takjil: ${cleanPrompt}. 
+Served in traditional bowl or glass, appetizing presentation, warm golden hour lighting, 
+wooden table background, vibrant colors, professional food photography, 
+8K resolution, mouth-watering, no text, no watermark.`;
 
   const body = {
     model: 'qwen-image-2.0-pro',
@@ -261,6 +267,14 @@ high quality food photography style, vibrant colors, shallow depth of field.`;
 //  MODE: video — generate video takjil via Wan2.6
 // =============================================================
 async function handleVideo(userPrompt) {
+  // Deteksi durasi dari prompt user (maks 10 detik per API limit)
+  let duration = 5;
+  const durMatch = userPrompt.match(/(\d+)\s*(detik|sekon|second|s)/i);
+  if (durMatch) {
+    const requested = parseInt(durMatch[1]);
+    duration = Math.min(Math.max(requested, 3), 10); // min 3s, max 10s (API limit)
+  }
+
   // Step 1: Buat video prompt yang baik
   const videoPrompt = `Indonesian Ramadan iftar food preparation: ${userPrompt}. 
 Cinematic food video, warm kitchen lighting, hands preparing traditional food, 
@@ -268,11 +282,11 @@ close-up shots of ingredients, steam rising, beautiful plating,
 professional cooking video style.`;
 
   const body = {
-    model: 'wan2.1-t2v-turbo', // model paling cepat & hemat untuk hackathon
+    model: 'wan2.1-t2v-turbo',
     input: { prompt: videoPrompt },
     parameters: {
       size: '1280*720',
-      duration: 5,
+      duration: duration,
       watermark: false,
       prompt_extend: true,
     }
@@ -303,12 +317,94 @@ professional cooking video style.`;
 }
 
 // =============================================================
+//  MODE: greeting — sapaan ramah dari Takjil.AI
+// =============================================================
+function isGreeting(prompt) {
+  const p = prompt.toLowerCase().trim();
+  const greetings = [
+    'halo', 'hai', 'hi', 'hello', 'hey', 'hei', 'hallo',
+    'selamat pagi', 'selamat siang', 'selamat sore', 'selamat malam',
+    'assalamu', 'assalamualaikum', 'waalaikumsalam', 'permisi',
+    'apa kabar', 'gimana kabar', 'siapa kamu', 'kamu siapa',
+    'apa itu takjil', 'takjil ai itu apa', 'perkenalkan', 'kenalan'
+  ];
+  return greetings.some(g => p.includes(g)) && p.length < 60;
+}
+
+function handleGreeting(prompt) {
+  const p = prompt.toLowerCase();
+  let reply = '';
+
+  if (p.includes('siapa') || p.includes('kamu') || p.includes('perkenalkan') || p.includes('kenalan') || p.includes('apa itu')) {
+    reply = `Halo! Aku **Takjil.AI** 🌙✨
+
+Aku adalah asisten AI spesialis takjil Ramadan yang dibuat dengan ❤️ menggunakan teknologi Alibaba Cloud.
+
+**Yang bisa aku lakukan:**
+- 👨‍🍳 **Resep** — buatkan resep takjil lengkap dengan bahan & langkah
+- 📊 **Nutrisi** — info kalori & kandungan gizi takjil
+- 💡 **Rekomendasi** — saran takjil dari bahan yang kamu punya
+- 📖 **Cerita** — sejarah & asal usul takjil Indonesia
+- 🎨 **Foto** — generate gambar takjil yang menggugah selera
+- 🎬 **Video** — buat video tutorial memasak takjil
+
+Mau mulai dengan apa? 😊`;
+  } else if (p.includes('apa kabar') || p.includes('gimana kabar')) {
+    reply = `Alhamdulillah baik! Siap membantu kamu menyiapkan takjil terbaik untuk Ramadan ini 🌙
+
+Mau resep takjil apa hari ini?`;
+  } else if (p.includes('pagi')) {
+    reply = `Selamat pagi! ☀️ Semoga harimu penuh berkah di bulan Ramadan ini.
+
+Sudah siap merencanakan takjil berbuka hari ini? Aku bisa bantu buatkan resep, foto, bahkan video tutorial-nya! 😊`;
+  } else if (p.includes('siang')) {
+    reply = `Selamat siang! 🌤️ Semangat puasanya ya!
+
+Mau aku bantu cariin ide takjil untuk berbuka nanti? Tinggal bilang bahan yang kamu punya, aku bisa rekomendasikan takjil yang cocok 😊`;
+  } else if (p.includes('sore')) {
+    reply = `Selamat sore! 🌅 Sebentar lagi buka puasa nih!
+
+Masih bingung mau buat takjil apa? Ceritain aja bahan yang ada di dapur, aku langsung kasih rekomendasinya! 🍹`;
+  } else if (p.includes('malam')) {
+    reply = `Selamat malam! 🌙 Semoga ibadah Ramadan hari ini penuh berkah.
+
+Ada yang bisa aku bantu untuk persiapan sahur atau takjil besok? 😊`;
+  } else if (p.includes('assalam') || p.includes('waalaikum')) {
+    reply = `Wa'alaikumsalam warahmatullahi wabarakatuh! 🌙
+
+Selamat datang di Takjil.AI! Aku siap membantu kamu menyiapkan takjil terbaik untuk berbuka puasa. Mau buat apa hari ini?`;
+  } else {
+    reply = `Halo! Selamat datang di **Takjil.AI** 🌙✨
+
+Aku siap membantu kamu menemukan, membuat, dan memvisualisasikan takjil Ramadan favoritmu!
+
+Coba tanyakan:
+- *"Resep es teler"*
+- *"Berikan foto kolak pisang"*
+- *"Buatkan video cara membuat cendol"*
+- *"Berapa kalori es campur?"*
+
+Mau mulai dengan apa? 😊`;
+  }
+
+  return {
+    mode: 'greeting',
+    recipe_name: 'Takjil.AI',
+    description: 'Asisten AI Takjil Ramadan',
+    greeting_text: reply,
+  };
+}
+
+// =============================================================
 //  INTENT DETECTION — deteksi mode dari kalimat bebas user
 // =============================================================
 function detectMode(prompt, explicitMode) {
   if (explicitMode && explicitMode !== 'auto') return explicitMode;
 
   const p = prompt.toLowerCase();
+
+  // Greeting check
+  if (isGreeting(prompt)) return 'greeting';
 
   const imageKeywords = [
     'foto', 'gambar', 'image', 'picture', 'tampilkan gambar',
@@ -366,6 +462,7 @@ export default async function handler(req, res) {
     let data;
 
     switch (mode) {
+      case 'greeting':  data = handleGreeting(prompt);                      break;
       case 'recipe':    data = await handleRecipe(prompt, deepThinking);    break;
       case 'nutrition': data = await handleNutrition(prompt, deepThinking); break;
       case 'recommend': data = await handleRecommend(prompt, deepThinking); break;
