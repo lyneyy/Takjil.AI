@@ -282,7 +282,7 @@ close-up shots of ingredients, steam rising, beautiful plating,
 professional cooking video style.`;
 
   const body = {
-    model: 'wan2.1-t2v-turbo',
+    model: 'wan2.6-t2v',
     input: { prompt: videoPrompt },
     parameters: {
       size: '1280*720',
