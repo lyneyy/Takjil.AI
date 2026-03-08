@@ -625,7 +625,7 @@
         <div class="crescent-inner">
           <div class="crescent-blur"></div>
           <img src="LogoTakjilAI.png" alt="Takjil.AI Logo" class="crescent-glow"
-               style="width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 0 15px rgba(255, 233, 161, 0.815))"/>
+               style="width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 15px rgba(252,211,77,.3))"/>
         </div>
       </div>
 
@@ -695,7 +695,7 @@
         </div>
       </div>
 
-      <p class="chat-disclaimer">✨ Takjil.AI adalah AI dan berpotensi tidak akurat. Mohon dicek kembali jawaban yang diberikan.</p>
+      <p class="chat-disclaimer">✨ Konten dibuat oleh AI untuk inspirasi takjil Ramadan</p>
     </section>
 
     <!-- Template Toggle Bar -->
@@ -747,7 +747,7 @@
         <div class="template-card fade-up" style="animation-delay:.1s">
           <div class="template-preview"><span>🛒</span></div>
           <div class="template-body">
-            <p class="template-title">📝 Daftar Belanja</p>
+            <p class="template-title">📝 Ide Resep</p>
             <p class="template-desc">"Hanya punya pisang dan santan, buat takjil apa ya?"</p>
             <div class="template-actions">
               <button class="btn-primary" onclick="quickGenerate('recommend','Hanya memiliki bahan pisang dan santan, buat takjil apa ya? Berikan gambarannya!')">Generate</button>
@@ -802,7 +802,7 @@
 
   <footer>
     <p class="footer-text">Dibuat dengan ❤️ untuk Ramadan yang lebih bermakna</p>
-    <p class="footer-copy">Takjil.AI © 2026 • sunibfiasretepnyleve</p>
+    <p class="footer-copy">Takjil.AI © 2024 • Hackathon Submission</p>
   </footer>
 
   <!-- Hidden file inputs -->
@@ -937,11 +937,19 @@
       addMessage('user', msg);
       input.value = '';
 
-      // Pesan loading berbeda untuk video (lama prosesnya)
-      const loadingText = currentMode === 'video'
+      // Pesan loading berbeda untuk setiap kondisi
+      // Deteksi intent lokal untuk loading message
+      const msgLower = msg.toLowerCase();
+      const looksLikeVideo = ['video','film','animasi','buatkan video','buat video'].some(k => msgLower.includes(k));
+      const looksLikeImage = ['foto','gambar','image','berikan foto','buatkan foto','tampilkan','perlihatkan'].some(k => msgLower.includes(k));
+      const effectiveMode = currentMode !== 'recipe' ? currentMode : looksLikeVideo ? 'video' : looksLikeImage ? 'image' : currentMode;
+
+      const loadingText = effectiveMode === 'video' || looksLikeVideo
         ? '🎬 Membuat video... ini butuh 2-5 menit, mohon tunggu ya!'
-        : currentMode === 'image'
+        : effectiveMode === 'image' || looksLikeImage
         ? '🎨 Membuat gambar... sebentar ya!'
+        : deepThinking
+        ? '🧠 Deep Thinking aktif... menganalisis lebih mendalam dengan Qwen Max...'
         : '✨ Sedang diproses...';
       const loadingId = addMessage('loading', loadingText);
       $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
@@ -952,7 +960,7 @@
         const res = await fetch('/api/generate', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ mode: currentMode, prompt: msg }),
+          body:    JSON.stringify({ mode: currentMode, prompt: msg, deepThinking, autoDetect: true }),
         });
 
         const json = await res.json();
