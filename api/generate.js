@@ -103,15 +103,10 @@ Format JSON wajib:
   "tips": "Tips chef"
 }`;
 
-  const body = {
-    model: deepThinking ? 'qwen-max' : 'qwen-plus',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userPrompt }
-    ],
-    temperature: deepThinking ? 0.9 : 0.7,
-  };
-
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userPrompt }
+  ];
   const model = deepThinking ? 'qwen-max' : 'qwen-plus';
   const temp  = deepThinking ? 0.9 : 0.7;
   const raw   = await dashscopeChat(model, messages, temp);
