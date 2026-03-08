@@ -235,14 +235,14 @@ Served in traditional bowl or glass, appetizing presentation, warm golden hour l
 wooden table background, vibrant colors, professional food photography, 
 mouth-watering, no text, no watermark.`;
 
-  // wanx2.1-t2i-turbo: model text-to-image terbaru Alibaba Cloud
+  // wanx-v1: stable text-to-image model di DashScope international
   const body = {
-    model: 'wanx2.1-t2i-turbo',
+    model: 'wanx-v1',
     input: { prompt: imagePrompt },
     parameters: {
+      style: '<photography>',
       size: '1024*1024',
       n: 1,
-      watermark: false,
     }
   };
 
@@ -342,7 +342,7 @@ function isGreeting(prompt) {
     'apa kabar', 'gimana kabar', 'siapa kamu', 'kamu siapa',
     'apa itu takjil', 'takjil ai itu apa', 'perkenalkan', 'kenalan'
   ];
-  return greetings.some(g => p.includes(g)) && p.length < 60;
+  return greetings.some(g => p === g || p.startsWith(g + ' ') || p.endsWith(' ' + g) || p === g + '!');
 }
 
 function handleGreeting(prompt) {
