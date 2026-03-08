@@ -33,7 +33,7 @@
 | 📝 **Rekomendasi** | Saran takjil berdasarkan bahan yang tersedia di rumah | Qwen Plus |
 | 🕌 **Sejarah Takjil** | Asal-usul & makna budaya takjil dalam tradisi Ramadan | Qwen Plus |
 | 🎨 **Gambar Takjil** | Generate foto takjil berkualitas tinggi | Qwen Image 2.0 Pro |
-| 🎬 **Video Masakan** | Generate video tutorial memasak takjil | Wan 2.1 T2V Turbo |
+| 🎬 **Video Masakan** | Generate video tutorial memasak takjil | Wan 2.6 T2V Turbo |
 
 ---
 
@@ -114,5 +114,6 @@ Dibuat dengan ❤️ untuk Ramadan yang lebih bermakna
 
 **Takjil.AI © 2026**
 **Tim sunibfiasretepnyleve - Binus University**
+
 
 </div>
