@@ -1,1221 +1,510 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Takjil.AI - Generator Resep Takjil Ramadan</title>
-  <meta name="description" content="Takjil.AI - Generator resep takjil dengan AI" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <style>
-    /* =============================================
-       RESET & BASE
-       ============================================= */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: #021a0a;
-      color: #e8f5e9;
-      overflow-x: hidden;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    button { cursor: pointer; font-family: inherit; border: none; background: none; }
-    p { margin: 0; }
-
-    /* =============================================
-       BACKGROUND / ATMOSPHERE
-       ============================================= */
-    .bg-mesh {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(ellipse 80% 60% at 20% 5%, rgba(251,191,36,.12) 0%, transparent 50%),
-        radial-gradient(ellipse 70% 55% at 15% 10%, rgba(16,185,129,.14) 0%, transparent 65%),
-        radial-gradient(ellipse 55% 65% at 85% 75%, rgba(5,150,105,.10) 0%, transparent 65%),
-        radial-gradient(ellipse 80% 40% at 50% 100%, rgba(202,138,4,.1) 0%, transparent 55%);
-    }
-    .orb {
-      position: fixed; border-radius: 50%; filter: blur(100px); opacity: .4;
-      pointer-events: none; z-index: 0;
-    }
-    .orb-1 { width:500px; height:500px; top:-15%; left:-12%; background:rgba(251,191,36,.15); animation: float-1 25s ease-in-out infinite; }
-    .orb-2 { width:400px; height:400px; bottom:5%; right:-10%; background:rgba(16,185,129,.2); animation: float-2 28s ease-in-out infinite; }
-    .orb-3 { width:300px; height:300px; top:30%; right:10%; background:rgba(251,191,36,.08); animation: float-3 22s ease-in-out infinite; }
-    @keyframes float-1 { 0%,100%{ transform:translate(0,0) } 50%{ transform:translate(60px,40px) } }
-    @keyframes float-2 { 0%,100%{ transform:translate(0,0) } 50%{ transform:translate(-50px,-35px) } }
-    @keyframes float-3 { 0%,100%{ transform:translate(0,0) } 50%{ transform:translate(30px,-50px) } }
-
-    .stars-container { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-    .star { position:absolute; width:3px; height:3px; background:#fcd34d; border-radius:50%; animation: twinkle 3s ease-in-out infinite alternate; }
-    @keyframes twinkle { 0%{opacity:.15;transform:scale(.7)} 100%{opacity:.7;transform:scale(1.1)} }
-
-    /* Mosque SVG */
-    .mosque-svg {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 0;
-      pointer-events: none; opacity: 0.07;
-      height: 12rem; width: 100%;
-    }
-
-    /* Lanterns */
-    .lantern {
-      position: fixed; z-index: 10; pointer-events: none;
-      transform-origin: 50% 0%;
-    }
-    .lantern-left  { top: 2.5rem; left: 2rem; display: none; animation: swing 3s ease-in-out infinite; }
-    .lantern-right { top: 5rem; right: 3rem; display: none; animation: swing 4s ease-in-out infinite; }
-    @keyframes swing { 0%,100%{ transform:rotate(3deg) } 50%{ transform:rotate(-3deg) } }
-
-    /* =============================================
-       REUSABLE COMPONENTS
-       ============================================= */
-    .glass {
-      background: rgba(6,78,59,0.95);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(16,185,129,0.2);
-      border-radius: 1rem;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: #fff;
-      transition: all .25s ease;
-      border-radius: 0.5rem;
-      font-weight: 500;
-    }
-    .btn-primary:hover { box-shadow: 0 0 30px rgba(16,185,129,.4); transform: translateY(-1px); }
-    .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
-
-    .btn-outline {
-      border: 1px solid rgba(16,185,129,0.35);
-      background: rgba(6,78,59,0.7);
-      color: #6ee7b7;
-      transition: all .2s;
-      border-radius: 0.5rem;
-    }
-    .btn-outline:hover {
-      background: rgba(251,191,36,0.15);
-      border-color: rgba(251,191,36,0.5);
-      color: #fcd34d;
-    }
-
-    .spinner {
-      width: 24px; height: 24px;
-      border: 2px solid rgba(16,185,129,.12);
-      border-top-color: #10b981;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform:rotate(360deg) } }
-
-    .fade-up { animation: fadeUp .4s ease-out both; }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
-
-    .hidden { display: none !important; }
-
-    /* =============================================
-       LAYOUT
-       ============================================= */
-    .main-wrapper {
-      position: relative;
-      z-index: 10;
-      max-width: 56rem;
-      margin: 0 auto;
-      padding: 1.5rem 1rem 2rem;
-      flex: 1;
-    }
-
-    /* =============================================
-       TOAST
-       ============================================= */
-    #toast {
-      position: fixed; top: 1rem;
-      left: 50%; transform: translateX(-50%);
-      z-index: 50;
-    }
-    .toast-inner {
-      display: flex; align-items: center; gap: 0.75rem;
-      padding: 0.75rem 1.5rem;
-      animation: slideIn .3s ease-out;
-    }
-    .toast-icon { font-size: 1.25rem; }
-    .toast-text { font-size: 0.875rem; font-weight: 500; }
-    @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-    /* =============================================
-       HEADER
-       ============================================= */
-    header {
-      text-align: center;
-      margin-bottom: 1.5rem;
-      position: relative;
-    }
-    .header-deco-left {
-      position: absolute; top: -0.5rem; left: 25%;
-      color: rgba(251,191,36,0.3); font-size: 1.125rem;
-    }
-    .header-deco-right {
-      position: absolute; top: -0.25rem; right: 25%;
-      color: rgba(251,191,36,0.2); font-size: 0.875rem;
-    }
-    .crescent-wrap {
-      display: flex; justify-content: center;
-      margin-bottom: 0.75rem; position: relative;
-    }
-    .crescent-inner { position: relative; }
-    .crescent-blur {
-      position: absolute; inset: 0;
-      filter: blur(1.25rem);
-      background: rgba(251,191,36,0.3);
-      border-radius: 50%;
-      transform: scale(1.5);
-    }
-    .crescent-glow {
-      position: relative;
-      filter: drop-shadow(0 0 15px rgba(252,211,77,.3));
-    }
-    .ramadhan-badge {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      padding: 0.375rem 4rem;
-      border-radius: 999px;
-      background: linear-gradient(to right, rgba(245,158,11,0.1), rgba(16,185,129,0.1));
-      border: 1px solid rgba(245,158,11,0.2);
-      color: #fde68a;
-      font-size: 0.75rem; font-weight: 500;
-      margin-bottom: 0.75rem;
-    }
-    .ramadhan-badge .badge-icon { font-size: 1rem; }
-    h1 {
-      font-size: 1.875rem; font-weight: 900; letter-spacing: -0.025em;
-      background: linear-gradient(to right, #6ee7b7, #fde68a, #6ee7b7);
-      -webkit-background-clip: text; background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .header-sub { margin-top: 0.5rem; color: rgba(253,230,138,0.6); font-size: 0.875rem; font-weight: 500; }
-    .header-sub2 { margin-top: 0.25rem; color: rgba(52,211,153,0.4); font-size: 0.75rem; }
-
-    /* =============================================
-       CHAT SECTION
-       ============================================= */
-    #chatSection { padding: 1rem; margin-bottom: 1rem; }
-
-    #chatMessages {
-      display: flex; flex-direction: column; gap: 0.75rem;
-      margin-bottom: 1rem;
-      max-height: 60vh;
-      overflow-y: auto;
-      padding-right: 0.5rem;
-    }
-
-    /* Message rows */
-    .msg-row-user { display: flex; justify-content: flex-end; }
-    .msg-row-ai   { display: flex; justify-content: flex-start; width: 100%; }
-
-    .msg-user {
-      background: linear-gradient(135deg, #10b981, #059669);
-      border-radius: 1rem 1rem 0.25rem 1rem;
-      max-width: 85%;
-      padding: 0.75rem 1rem;
-    }
-    .msg-user p { font-size: 0.875rem; color: #fff; }
-
-    .msg-ai {
-      background: rgba(6,78,59,0.95);
-      border: 1px solid rgba(251,191,36,0.15);
-      border-radius: 1rem 1rem 1rem 0.25rem;
-      width: 100%;
-      padding: 0.75rem 1rem;
-    }
-    .msg-ai p { font-size: 0.875rem; color: #d1fae5; }
-    .msg-ai-full { padding: 1rem; }
-
-    /* Chat input bar */
-    .chat-input {
-      background: rgba(6,78,59,0.95);
-      border: 1px solid rgba(16,185,129,0.2);
-      border-radius: 1.5rem;
-      transition: all .2s;
-      padding: 0.5rem;
-    }
-    .chat-input:focus-within {
-      border-color: rgba(16,185,129,0.5);
-      box-shadow: 0 0 20px rgba(16,185,129,.15);
-    }
-    .chat-input-row {
-      display: flex; align-items: center; gap: 0.5rem;
-    }
-    #chatInput {
-      flex: 1; padding: 0.5rem 0.75rem;
-      background: transparent; border: none; outline: none;
-      color: #e8f5e9; font-size: 0.875rem; font-family: inherit;
-    }
-    #chatInput::placeholder { color: rgba(16,185,129,0.5); }
-
-    /* Upload button */
-    .upload-trigger {
-      width: 2.25rem; height: 2.25rem; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      color: #34d399; transition: background .2s;
-    }
-    .upload-trigger:hover { background: rgba(16,185,129,0.1); }
-
-    /* Deep thinking button */
-    #deepThinkingBtn {
-      padding: 0.375rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.75rem; font-weight: 500;
-      display: flex; align-items: center; gap: 0.375rem;
-      white-space: nowrap;
-    }
-    #deepThinkingBtn.active {
-      background: rgba(16,185,129,0.2);
-      border-color: rgba(52,211,153,0.4);
-    }
-
-    /* Send button */
-    .send-btn {
-      width: 2.25rem; height: 2.25rem; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; flex-shrink: 0;
-    }
-
-    /* Upload dropdown */
-    .upload-menu-wrap { position: relative; }
-    .dropdown-menu {
-      position: absolute; bottom: 100%; left: 0;
-      margin-bottom: 0.5rem;
-      background: #064e3b;
-      border: 1px solid rgba(251,191,36,0.25);
-      border-radius: 0.75rem;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-      padding: 0.5rem;
-      min-width: 12rem;
-      z-index: 20;
-    }
-    .dropdown-item {
-      width: 100%; display: flex; align-items: center; gap: 0.75rem;
-      padding: 0.5rem 0.75rem; border-radius: 0.5rem;
-      font-size: 0.875rem; color: #d1fae5;
-      text-align: left; transition: background .15s;
-    }
-    .dropdown-item:hover { background: rgba(251,191,36,0.1); }
-    .dropdown-item-text p { margin: 0; }
-    .dropdown-item-sub { font-size: 0.75rem; color: #10b981; }
-
-    /* Uploaded file previews */
-    #uploadedFiles {
-      margin-top: 0.5rem; padding-top: 0.5rem;
-      border-top: 1px solid rgba(16,185,129,0.1);
-    }
-    #filePreviewList { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .file-preview { position: relative; }
-    .file-preview img { width: 4rem; height: 4rem; object-fit: cover; border-radius: 0.5rem; display: block; }
-    .file-preview-video {
-      width: 4rem; height: 4rem; border-radius: 0.5rem;
-      background: rgba(16,185,129,0.1);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .file-remove {
-      position: absolute; top: -0.25rem; right: -0.25rem;
-      width: 1.25rem; height: 1.25rem; border-radius: 50%;
-      background: rgba(239,68,68,0.8); color: #fff;
-      font-size: 0.75rem;
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; transition: opacity .15s;
-    }
-    .file-preview:hover .file-remove { opacity: 1; }
-
-    .chat-disclaimer {
-      text-align: center; font-size: 0.75rem;
-      color: rgba(251,191,36,0.4); margin-top: 0.5rem;
-    }
-
-    /* =============================================
-       TEMPLATE TOGGLE BAR
-       ============================================= */
-    #templateToggleBar {
-      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 0.55rem 1rem;
-      border-radius: 999px;
-      background: rgba(6,78,59,0.7);
-      border: 1px solid rgba(16,185,129,0.2);
-      color: #6ee7b7;
-      font-size: 0.75rem; font-weight: 600;
-      transition: all .2s;
-      opacity: 0; pointer-events: none;
-      margin: 0 auto 1.25rem auto;
-      width: fit-content;
-    }
-    #templateToggleBar.visible { opacity: 1; pointer-events: auto; animation: fadeUp .3s ease-out both; }
-    #templateToggleBar:hover { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.4); color: #fcd34d; }
-    #templateToggleBar svg { transition: transform .3s ease; }
-    #templateToggleBar.open svg { transform: rotate(180deg); }
-    .toggle-bar-muted { opacity: 0.5; }
-
-    /* =============================================
-       TEMPLATE SECTION
-       ============================================= */
-    #templateSection {
-      overflow: hidden;
-      transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.35s ease,
-                  margin-top 0.35s ease;
-    }
-    #templateSection.collapsed {
-      max-height: 0 !important;
-      opacity: 0;
-      margin-top: 0 !important;
-      pointer-events: none;
-    }
-
-    .section-divider {
-      display: flex; align-items: center; gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-    .divider-line {
-      height: 1px; flex: 1;
-      background: linear-gradient(to right, transparent, rgba(245,158,11,0.2), transparent);
-    }
-    .divider-label {
-      font-size: 0.75rem; color: rgba(252,211,77,0.7); font-weight: 500;
-      display: flex; align-items: center; gap: 0.375rem;
-    }
-
-    /* Template grid */
-    .template-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 0.75rem;
-    }
-
-    .template-card {
-      transition: all .25s ease;
-      background: rgba(6,78,59,0.9);
-      border: 1px solid rgba(16,185,129,0.15);
-      border-radius: 1rem;
-      overflow: hidden;
-    }
-    .template-card:hover {
-      border-color: rgba(251,191,36,0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(251,191,36,.1);
-    }
-    .template-preview {
-      height: 6.25rem;
-      background: linear-gradient(135deg, rgba(6,78,59,0.6), rgba(251,191,36,0.08), rgba(5,150,105,0.3));
-      display: flex; align-items: center; justify-content: center;
-      position: relative;
-    }
-    .template-preview::before {
-      content: '☪'; position: absolute; top: 8px; right: 12px;
-      font-size: 14px; color: rgba(251,191,36,0.3);
-    }
-    .template-preview span { font-size: 2.5rem; }
-    .template-body { padding: 0.75rem; }
-    .template-title {
-      font-weight: 600; color: #d1fae5; font-size: 0.875rem;
-      margin-bottom: 0.25rem;
-      display: flex; align-items: center; gap: 0.375rem;
-    }
-    .template-desc {
-      font-size: 0.75rem; color: rgba(52,211,153,0.6);
-      margin-bottom: 0.75rem; line-height: 1.5;
-    }
-    .template-actions { display: flex; gap: 0.5rem; }
-    .template-actions .btn-primary { flex: 1; padding: 0.5rem; font-size: 0.75rem; }
-    .template-actions .btn-outline  { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
-
-    /* =============================================
-       CHAT RESULT STYLES
-       ============================================= */
-    .result-header {
-      margin-bottom: 1rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid rgba(16,185,129,0.2);
-    }
-    .result-header h2 { font-weight: 700; font-size: 1.125rem; color: #d1fae5; margin-bottom: 0.25rem; }
-    .result-header p  { font-size: 0.875rem; color: rgba(52,211,153,0.8); line-height: 1.5; }
-
-    .stats-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    .stat-card {
-      background: rgba(6,78,59,0.6);
-      border: 1px solid rgba(251,191,36,.2);
-      border-radius: 0.75rem;
-      padding: 0.8rem 0.5rem;
-      text-align: center;
-      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
-      transition: all 0.3s ease;
-    }
-    .stat-label { font-size: 0.65rem; color: #6ee7b7; text-transform: uppercase; letter-spacing: 0.05em; }
-    .stat-value { font-size: 1rem; font-weight: 700; color: #fff; }
-    .stat-unit  { font-size: 0.6rem; color: #34d399; font-weight: 500; }
-
-    .ingredients-wrap { margin-bottom: 1rem; }
-    .section-title {
-      font-weight: 600; color: #d1fae5;
-      display: flex; align-items: center; gap: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
-    .ingredients-list {
-      background: rgba(2,26,10,0.3); border-radius: 0.5rem; padding: 0.5rem;
-    }
-    .chat-ingredient-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 0.6rem 0;
-      border-bottom: 1px dashed rgba(16,185,129,0.2);
-      font-size: 0.9rem;
-    }
-    .chat-ingredient-row:last-child { border-bottom: none; }
-    .chat-ing-name {
-      font-weight: 500; color: #e8f5e9;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .chat-ing-qty {
-      font-size: 0.8rem; color: #6ee7b7;
-      background: rgba(6,78,59,0.5); padding: 2px 6px; border-radius: 4px;
-    }
-    .chat-ing-price { font-weight: 600; color: #fbbf24; font-family: monospace; font-size: 0.9rem; }
-    .ingredients-total {
-      margin-top: 0.5rem; padding-top: 0.5rem;
-      border-top: 1px solid rgba(16,185,129,0.2);
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 0.75rem;
-    }
-    .ingredients-total span:first-child { color: #34d399; }
-    .ingredients-total span:last-child  { color: #fbbf24; font-weight: 700; }
-
-    .steps-wrap { margin-bottom: 1rem; }
-    .chat-steps-container { position: relative; padding-left: 20px; margin-top: 1rem; }
-    .chat-steps-container::before {
-      content: ''; position: absolute; left: 6px; top: 5px; bottom: 5px;
-      width: 2px; background: rgba(16,185,129,0.2); border-radius: 2px;
-    }
-    .chat-step-item {
-      position: relative; margin-bottom: 1.2rem;
-      background: rgba(6,78,59,0.3); border: 1px solid rgba(16,185,129,0.1);
-      border-radius: 8px; padding: 0.8rem 0.8rem 0.8rem 2.5rem;
-      transition: all 0.2s;
-    }
-    .chat-step-item:hover { background: rgba(6,78,59,0.5); border-color: rgba(16,185,129,0.3); }
-    .chat-step-number {
-      position: absolute; left: -20px; top: 50%; transform: translateY(-50%);
-      width: 24px; height: 24px; background: #10b981; color: #022c22;
-      border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 0.75rem; border: 2px solid #064e3b; z-index: 1;
-    }
-    .chat-step-text { color: #d1fae5; line-height: 1.5; font-size: 0.9rem; }
-
-    .chat-tips-box {
-      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
-      border: 1px solid rgba(251,191,36,0.2); border-radius: 8px;
-      padding: 0.8rem; margin-top: 1rem;
-      display: flex; gap: 10px; align-items: flex-start;
-    }
-    .chat-tips-icon { font-size: 1.2rem; flex-shrink: 0; }
-    .chat-tips-content h4 { color: #fbbf24; font-size: 0.85rem; font-weight: 700; margin-bottom: 2px; }
-    .chat-tips-content p  { color: #fef3c7; font-size: 0.85rem; line-height: 1.4; }
-
-    /* =============================================
-       FOOTER
-       ============================================= */
-    footer {
-      position: relative; z-index: 10;
-      text-align: center;
-      padding: 1.5rem;
-      border-top: 1px solid rgba(6,78,59,0.5);
-      background: rgba(2,10,6,0.8);
-      backdrop-filter: blur(12px);
-      margin-top: auto;
-    }
-    .footer-star { display: flex; justify-content: center; align-items: center; gap: 0.5rem; color: #f59e0b; margin-bottom: 0.75rem; }
-    .footer-text  { color: rgba(52,211,153,0.6); font-size: 0.875rem; margin-bottom: 0.25rem; }
-    .footer-copy  { color: rgba(6,78,59,0.8); font-size: 0.75rem; font-family: monospace; }
-    .follow-up-wrap { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .85rem; }
-    .follow-up-btn  {
-      background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.35);
-      color: #6ee7b7; border-radius: 1.5rem; padding: .35rem .85rem;
-      font-size: .8rem; cursor: pointer; transition: all .2s;
-      white-space: nowrap;
-    }
-    .follow-up-btn:hover { background: rgba(16,185,129,.25); border-color: #6ee7b7; color: #fff; }
-
-    /* =============================================
-       SCROLLBAR
-       ============================================= */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(16,185,129,.2); border-radius: 3px; }
-
-    /* =============================================
-       RESPONSIVE — md (768px)
-       ============================================= */
-    @media (min-width: 768px) {
-      h1 { font-size: 2.25rem; }
-      .lantern-left, .lantern-right { display: block; }
-      .mosque-svg { height: 16rem; }
-      .template-grid { grid-template-columns: repeat(2, 1fr); }
-      .stats-grid { grid-template-columns: repeat(4, 1fr); }
-    }
-
-    /* =============================================
-       RESPONSIVE — lg (1024px)
-       ============================================= */
-    @media (min-width: 1024px) {
-      .mosque-svg { height: 24rem; }
-      .template-grid { grid-template-columns: repeat(3, 1fr); }
-    }
-  </style>
-</head>
-
-<body>
-  <!-- Background layers -->
-  <div class="bg-mesh"></div>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-  <div class="stars-container" id="starsContainer"></div>
-
-  <!-- Mosque silhouette -->
-  <svg class="mosque-svg" viewBox="0 0 1440 320" fill="#fbbf24" preserveAspectRatio="none">
-    <rect x="70" y="230" width="20" height="90" rx="2"/><circle cx="80" cy="228" r="12"/><ellipse cx="80" cy="205" rx="8" ry="25"/>
-    <rect x="180" y="200" width="140" height="120" rx="5"/><ellipse cx="250" cy="200" rx="70" ry="40"/><circle cx="250" cy="162" r="8"/><rect x="246" y="142" width="8" height="22"/>
-    <rect x="420" y="240" width="18" height="80" rx="2"/><circle cx="429" cy="238" r="10"/><ellipse cx="429" cy="218" rx="6" ry="22"/>
-    <rect x="600" y="210" width="120" height="110" rx="4"/><ellipse cx="660" cy="210" rx="60" ry="35"/><circle cx="660" cy="178" r="6"/><rect x="656" y="160" width="8" height="20"/>
-    <rect x="820" y="190" width="160" height="130" rx="5"/><ellipse cx="900" cy="190" rx="80" ry="48"/><circle cx="900" cy="146" r="9"/><rect x="895" y="124" width="10" height="24"/>
-    <rect x="1080" y="230" width="18" height="90" rx="2"/><circle cx="1089" cy="228" r="10"/><ellipse cx="1089" cy="208" rx="6" ry="22"/>
-    <rect x="1200" y="215" width="100" height="105" rx="4"/><ellipse cx="1250" cy="215" rx="50" ry="30"/><circle cx="1250" cy="188" r="6"/><rect x="1246" y="170" width="8" height="20"/>
-    <rect x="1370" y="240" width="20" height="80" rx="2"/><circle cx="1380" cy="238" r="12"/><ellipse cx="1380" cy="215" rx="8" ry="25"/>
-    <rect x="0" y="290" width="1440" height="30"/>
-  </svg>
-
-  <!-- Floating Lanterns -->
-  <div class="lantern lantern-left">
-    <svg width="32" height="60" viewBox="0 0 32 60" fill="none">
-      <line x1="16" y1="0" x2="16" y2="10" stroke="#d97706" stroke-width="1"/>
-      <rect x="12" y="10" width="8" height="5" rx="1" fill="#d97706"/>
-      <rect x="14" y="15" width="4" height="4" fill="#b45309"/>
-      <path d="M5 26 C5 19, 27 19, 27 26 L29 50 C29 58, 3 58, 3 50 Z" fill="#f59e0b" opacity=".9"/>
-      <path d="M9 26 C9 21, 23 21, 23 26 L25 48 C25 54, 7 54, 7 48 Z" fill="#fcd34d" opacity=".6"/>
-      <ellipse cx="16" cy="36" rx="3" ry="4" fill="#fef3c7" opacity=".9"/>
-    </svg>
-  </div>
-  <div class="lantern lantern-right">
-    <svg width="28" height="54" viewBox="0 0 32 60" fill="none">
-      <line x1="16" y1="0" x2="16" y2="10" stroke="#d97706" stroke-width="1"/>
-      <rect x="12" y="10" width="8" height="5" rx="1" fill="#d97706"/>
-      <rect x="14" y="15" width="4" height="4" fill="#b45309"/>
-      <path d="M5 26 C5 19, 27 19, 27 26 L29 50 C29 58, 3 58, 3 50 Z" fill="#f59e0b" opacity=".85"/>
-      <path d="M9 26 C9 21, 23 21, 23 26 L25 48 C25 54, 7 54, 7 48 Z" fill="#fcd34d" opacity=".5"/>
-      <ellipse cx="16" cy="36" rx="3" ry="4" fill="#fef3c7" opacity=".9"/>
-    </svg>
-  </div>
-
-  <!-- Toast -->
-  <div id="toast" class="glass hidden">
-    <div class="toast-inner">
-      <span id="toastIcon" class="toast-icon"></span>
-      <span id="toastText" class="toast-text"></span>
-    </div>
-  </div>
-
-  <div class="main-wrapper">
-
-    <!-- Header -->
-    <header>
-      <span class="header-deco-left">✦</span>
-      <span class="header-deco-right">✧</span>
-
-      <div class="crescent-wrap">
-        <div class="crescent-inner">
-          <div class="crescent-blur"></div>
-          <img src="LogoTakjilAI.png" alt="Takjil.AI Logo" class="crescent-glow"
-               style="width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 15px rgba(252,211,77,.3))"/>
-        </div>
-      </div>
-
-      <div class="ramadhan-badge">
-        <span class="badge-icon">🌙</span>
-        <span>Ramadan Kareem</span>
-        <span class="badge-icon">🕌</span>
-      </div>
-
-      <h1>Takjil.AI</h1>
-      <p class="header-sub">Asisten AI untuk Kreasi Takjil Ramadan 🍽️</p>
-      <p class="header-sub2">Buat resep, video, gambar, dan cerita takjil dengan keajaiban AI</p>
-    </header>
-
-    <!-- Chat Section -->
-    <section id="chatSection" class="glass">
-      <div id="chatMessages">
-        <div class="msg-row-ai fade-up">
-          <div class="msg-ai">
-            <p>Assalamu'alaikum! 👋 Saya Takjil.AI.<br>
-            Mau buat takjil apa hari ini? Pilih resep cepat di bawah atau ketik permintaanmu!</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Input bar -->
-      <div class="chat-input">
-        <div class="chat-input-row">
-          <!-- Upload -->
-          <div class="upload-menu-wrap">
-            <button class="upload-trigger" onclick="toggleUploadMenu()" aria-label="Lampirkan file">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            </button>
-            <div id="uploadMenu" class="dropdown-menu hidden">
-              <button class="dropdown-item" onclick="triggerUpload('image')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                <div class="dropdown-item-text">
-                  <p style="font-weight:500">Upload Gambar</p>
-                  <p class="dropdown-item-sub">Maks 5 gambar, &lt;100MB</p>
-                </div>
-              </button>
-              <button class="dropdown-item" onclick="triggerUpload('video')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 9l5 3-5 3V9z"/></svg>
-                <div class="dropdown-item-text">
-                  <p style="font-weight:500">Upload Video</p>
-                  <p class="dropdown-item-sub">Maks 1 video, &lt;500MB</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <input id="chatInput" type="text"
-            placeholder="🌙 Mau buat takjil apa untuk berbuka hari ini?"
-            onkeypress="if(event.key==='Enter')sendMessage()" />
-
-          <button id="deepThinkingBtn" class="btn-outline" onclick="toggleDeepThinking()">
-            <span>🧠</span> Deep Thinking
-          </button>
-
-          <button class="btn-primary send-btn" onclick="sendMessage()" aria-label="Kirim">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-          </button>
-        </div>
-
-        <div id="uploadedFiles" class="hidden">
-          <div id="filePreviewList"></div>
-        </div>
-      </div>
-
-      <p class="chat-disclaimer">Takjil.AI adalah AI dan berpotensi tidak akurat. Mohon dicek kembali jawaban yang diberikan.</p>
-    </section>
-
-    <!-- Template Toggle Bar -->
-    <button id="templateToggleBar" onclick="toggleTemplates()" aria-label="Toggle pilihan cepat">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M19 9l-7 7-7-7"/>
-      </svg>
-      <span id="toggleBarLabel">Tampilkan Pilihan Cepat</span>
-      <span class="toggle-bar-muted">· 6 template</span>
-    </button>
-
-    <!-- Template Section -->
-    <section id="templateSection" style="max-height:2000px;">
-      <div class="section-divider">
-        <div class="divider-line"></div>
-        <span class="divider-label">✨ PILIHAN CEPAT ✨</span>
-        <div class="divider-line"></div>
-      </div>
-
-      <div class="template-grid">
-
-        <!-- Resep -->
-        <div class="template-card fade-up">
-          <div class="template-preview"><span>🥘</span></div>
-          <div class="template-body">
-            <p class="template-title">🍽️ Resep Takjil</p>
-            <p class="template-desc">"Cara membuat Es Kolang Kaling segar untuk berbuka"</p>
-            <div class="template-actions">
-              <button class="btn-primary" onclick="quickGenerate('recipe','Cara membuat takjil Es Kolang Kaling dengan langkah lengkap')">Generate</button>
-              <button class="btn-outline" onclick="openChatWithPrompt('recipe','Cara membuat takjil Es Kolang Kaling dengan langkah lengkap')">Edit</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Video -->
-        <div class="template-card fade-up" style="animation-delay:.05s">
-          <div class="template-preview"><span>🎥</span></div>
-          <div class="template-body">
-            <p class="template-title">🎬 Video Masakan</p>
-            <p class="template-desc">"Video pembuatan Pisang Goreng untuk takjil"</p>
-            <div class="template-actions">
-              <button class="btn-primary" onclick="quickGenerate('video','Video pembuatan Pisang Goreng 15 detik dengan tutorial step by step')">Generate</button>
-              <button class="btn-outline" onclick="openChatWithPrompt('video','Video pembuatan Pisang Goreng 15 detik dengan tutorial')">Edit</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Rekomendasi -->
-        <div class="template-card fade-up" style="animation-delay:.1s">
-          <div class="template-preview"><span>🛒</span></div>
-          <div class="template-body">
-            <p class="template-title">📝 Daftar Belanja</p>
-            <p class="template-desc">"Hanya punya pisang dan santan, buat takjil apa ya?"</p>
-            <div class="template-actions">
-              <button class="btn-primary" onclick="quickGenerate('recommend','Hanya memiliki bahan pisang dan santan, buat takjil apa ya? Berikan gambarannya!')">Generate</button>
-              <button class="btn-outline" onclick="openChatWithPrompt('recommend','Hanya punya pisang dan santan, buat takjil apa ya?')">Edit</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Nutrisi -->
-        <div class="template-card fade-up" style="animation-delay:.15s">
-          <div class="template-preview"><span>💪</span></div>
-          <div class="template-body">
-            <p class="template-title">📊 Info Nutrisi</p>
-            <p class="template-desc">"Kalori Risol Mayonais untuk menu berbuka"</p>
-            <div class="template-actions">
-              <button class="btn-primary" onclick="quickGenerate('nutrition','Hitung kalori takjil Risol Mayonais dan berikan informasi gizi lengkap')">Generate</button>
-              <button class="btn-outline" onclick="openChatWithPrompt('nutrition','Hitung kalori takjil Risol Mayonais')">Edit</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Gambar -->
-        <div class="template-card fade-up" style="animation-delay:.2s">
-          <div class="template-preview"><span>🖼️</span></div>
-          <div class="template-body">
-            <p class="template-title">🎨 Gambar Takjil</p>
-            <p class="template-desc">"Buat gambar Es Buah untuk menu berbuka puasa"</p>
-            <div class="template-actions">
-              <button class="btn-primary" onclick="quickGenerate('image','Buatlah gambar takjil Es Buah dengan gaya sketsa artistik dan pencahayaan dramatis')">Generate</button>
-              <button class="btn-outline" onclick="openChatWithPrompt('image','Buat gambar takjil Es Buah dengan gaya sketsa')">Edit</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sejarah -->
-        <div class="template-card fade-up" style="animation-delay:.25s">
-          <div class="template-preview"><span>📜</span></div>
-          <div class="template-body">
-            <p class="template-title">🕌 Sejarah Takjil</p>
-            <p class="template-desc">"Sejarah Kolak Pisang & tradisi berbuka Ramadan"</p>
-            <div class="template-actions">
-              <button class="btn-primary" onclick="quickGenerate('story','Ceritakan sejarah dan asal-usul takjil Kolak Pisang beserta tradisi Ramadannya')">Generate</button>
-              <button class="btn-outline" onclick="openChatWithPrompt('story','Ceritakan sejarah takjil Kolak Pisang')">Edit</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-  </div><!-- /main-wrapper -->
-
-  <footer>
-    <p class="footer-text">Dibuat dengan ❤️ untuk Ramadan yang lebih bermakna</p>
-    <p class="footer-copy">Takjil.AI © 2026 • sunibfiasretepnyleve</p>
-  </footer>
-
-  <!-- Hidden file inputs -->
-  <input type="file" id="imageInput" accept="image/*" multiple style="display:none" onchange="handleFileUpload(event,'image')"/>
-  <input type="file" id="videoInput" accept="video/*"              style="display:none" onchange="handleFileUpload(event,'video')"/>
-
-  <script>
-    /* =============================================
-       UTILS
-       ============================================= */
-    const $ = id => document.getElementById(id);
-    const show = id => $(id)?.classList.remove('hidden');
-    const hide = id => $(id)?.classList.add('hidden');
-    const idr  = n  => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(n);
-
-    let deepThinking      = false;
-    let uploadedFiles     = [];
-    let currentMode       = 'recipe';
-    let chatStarted       = false;
-    let templatesCollapsed = false;
-
-    /* =============================================
-       STARS
-       ============================================= */
-    (function initStars() {
-      const c = $('starsContainer');
-      for (let i = 0; i < 35; i++) {
-        const s = document.createElement('div');
-        s.className = 'star';
-        s.style.left  = Math.random() * 100 + '%';
-        s.style.top   = Math.random() * 50  + '%';
-        s.style.animationDelay = (Math.random() * 4).toFixed(1) + 's';
-        const size = 1.5 + Math.random() * 1.5;
-        s.style.width = s.style.height = size + 'px';
-        c.appendChild(s);
-      }
-    })();
-
-    /* =============================================
-       TOAST
-       ============================================= */
-    function showToast(icon, text, duration = 2500) {
-      $('toastIcon').innerHTML = icon;
-      $('toastText').textContent = text;
-      show('toast');
-      setTimeout(() => hide('toast'), duration);
-    }
-
-    /* =============================================
-       UPLOAD
-       ============================================= */
-    function toggleUploadMenu() { $('uploadMenu').classList.toggle('hidden'); }
-    function triggerUpload(type) { $('uploadMenu').classList.add('hidden'); $(type+'Input').click(); }
-
-    function handleFileUpload(event, type) {
-      Array.from(event.target.files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => { uploadedFiles.push({type, name: file.name, data: e.target.result}); renderUploadedFiles(); };
-        reader.readAsDataURL(file);
-      });
-    }
-    function renderUploadedFiles() {
-      if (!uploadedFiles.length) { hide('uploadedFiles'); return; }
-      show('uploadedFiles');
-      $('filePreviewList').innerHTML = uploadedFiles.map((f,i) => `
-        <div class="file-preview">
-          ${f.type==='image'
-            ? `<img src="${f.data}" alt="${f.name}"/>`
-            : `<div class="file-preview-video"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 9l5 3-5 3V9z"/></svg></div>`}
-          <button class="file-remove" onclick="removeFile(${i})">×</button>
-        </div>`).join('');
-    }
-    function removeFile(i) { uploadedFiles.splice(i,1); renderUploadedFiles(); }
-
-    /* =============================================
-       DEEP THINKING
-       ============================================= */
-    function toggleDeepThinking() {
-      deepThinking = !deepThinking;
-      $('deepThinkingBtn').classList.toggle('active', deepThinking);
-    }
-
-    /* =============================================
-       TEMPLATE COLLAPSE
-       ============================================= */
-    function collapseTemplatesOnFirstChat() {
-      if (chatStarted) return;
-      chatStarted = true;
-      const section = $('templateSection');
-      const bar     = $('templateToggleBar');
-      section.style.maxHeight = section.scrollHeight + 'px';
-      requestAnimationFrame(() => section.classList.add('collapsed'));
-      templatesCollapsed = true;
-      bar.classList.add('visible');
-      bar.classList.remove('open');
-      $('toggleBarLabel').textContent = 'Tampilkan Pilihan Cepat';
-    }
-
-    function toggleTemplates() {
-      const section = $('templateSection');
-      const bar     = $('templateToggleBar');
-      if (templatesCollapsed) {
-        section.classList.remove('collapsed');
-        section.style.maxHeight = '2000px';
-        templatesCollapsed = false;
-        bar.classList.add('open');
-        $('toggleBarLabel').textContent = 'Sembunyikan Pilihan Cepat';
-      } else {
-        section.style.maxHeight = section.scrollHeight + 'px';
-        requestAnimationFrame(() => section.classList.add('collapsed'));
-        templatesCollapsed = true;
-        bar.classList.remove('open');
-        $('toggleBarLabel').textContent = 'Tampilkan Pilihan Cepat';
-      }
-    }
-
-    /* =============================================
-       CHAT
-       ============================================= */
-    function openChatWithPrompt(mode, prompt) {
-      currentMode = mode;
-      $('chatInput').value = prompt;
-      $('chatInput').focus();
-      $('chatSection').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    async function sendMessage() {
-      const input = $('chatInput');
-      const msg   = input.value.trim();
-      if (!msg && !uploadedFiles.length) return;
-
-      addMessage('user', msg);
-      input.value = '';
-
-      // Pesan loading berbeda untuk setiap kondisi
-      // Deteksi intent lokal untuk loading message
-      const msgLower = msg.toLowerCase();
-      const looksLikeVideo = ['video','film','animasi','buatkan video','buat video'].some(k => msgLower.includes(k));
-      const looksLikeImage = ['foto','gambar','image','berikan foto','buatkan foto','tampilkan','perlihatkan'].some(k => msgLower.includes(k));
-      const effectiveMode = currentMode !== 'recipe' ? currentMode : looksLikeVideo ? 'video' : looksLikeImage ? 'image' : currentMode;
-
-      const loadingText = effectiveMode === 'video' || looksLikeVideo
-        ? '🎬 Membuat video (maks 15 detik, proses 1-5 menit)... mohon tunggu ya! ⚠️ Durasi video max 15 detik'
-        : effectiveMode === 'image' || looksLikeImage
-        ? '🎨 Membuat gambar... sebentar ya!'
-        : deepThinking
-        ? '🧠 Deep Thinking aktif... menganalisis lebih mendalam dengan Qwen Max...'
-        : '✨ Sedang diproses...';
-      const loadingId = addMessage('loading', loadingText);
-      $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
-      collapseTemplatesOnFirstChat();
-
-      try {
-        // Hit Vercel serverless function (proxy ke Alibaba Cloud)
-        const res = await fetch('/api/generate', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ mode: currentMode, prompt: msg, deepThinking, autoDetect: true }),
-        });
-
-        const json = await res.json();
-        removeMessage(loadingId);
-
-        if (!json.success) {
-          addMessage('ai', `❌ Maaf, terjadi kesalahan: ${json.error || 'Gagal memproses'}`);
-          return;
-        }
-
-        renderChatMessage(json.data);
-        showToast('✅', 'Berhasil dibuat!');
-
-      } catch (err) {
-        removeMessage(loadingId);
-        addMessage('ai', '❌ Tidak dapat terhubung ke server. Pastikan internet kamu aktif.');
-        console.error(err);
-      }
-
-      uploadedFiles = [];
-      renderUploadedFiles();
-    }
-
-    function addMessage(type, content) {
-      const id  = 'msg-' + Date.now();
-      const box = $('chatMessages');
-      if (type === 'loading') {
-        const txt = content ? `<span style="font-size:.8rem;color:#6ee7b7;margin-left:.5rem">${content}</span>` : '';
-        box.insertAdjacentHTML('beforeend',
-          `<div id="${id}" class="msg-row-ai fade-up"><div class="msg-ai" style="display:flex;align-items:center;gap:.5rem;padding:.75rem 1rem"><div class="spinner"></div>${txt}</div></div>`);
-      } else if (type === 'user') {
-        box.insertAdjacentHTML('beforeend',
-          `<div class="msg-row-user fade-up"><div class="msg-user"><p>${content}</p></div></div>`);
-      } else {
-        box.insertAdjacentHTML('beforeend',
-          `<div class="msg-row-ai fade-up"><div class="msg-ai"><p>${content}</p></div></div>`);
-      }
-      box.scrollTop = box.scrollHeight;
-      return id;
-    }
-    function removeMessage(id) { $(id)?.remove(); }
-
-    async function quickGenerate(mode, prompt) {
-      currentMode = mode;
-      $('chatInput').value = prompt;
-      $('chatSection').scrollIntoView({ behavior:'smooth', block:'center' });
-      setTimeout(sendMessage, 400);
-    }
-
-    /* =============================================
-       RENDER CHAT RESULT — semua mode
-       ============================================= */
-    function renderChatMessage(d) {
-      const mode = d.mode || currentMode;
-
-      // GREETING
-      if (mode === 'greeting') {
-        const text = d.greeting_text || '';
-        // Convert **bold** markdown and newlines to HTML
-        const formatted = text
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .split('\n').join('<br>');
-        html += `<div class="chat-greeting" style="line-height:1.7;color:#d1fae5;">${formatted}</div>`;
-        box.insertAdjacentHTML('beforeend', html);
-        box.scrollTop = box.scrollHeight;
-        return;
-      }
-      const box  = $('chatMessages');
-      const id   = 'msg-' + Date.now();
-      let html   = `<div id="${id}" class="msg-row-ai fade-up" style="width:100%"><div class="msg-ai msg-ai-full">`;
-
-      // Header selalu tampil
-      html += `<div class="result-header">
-        <h2>${d.recipe_name || 'Hasil'}</h2>
-        <p>${d.description  || ''}</p>
-      </div>`;
-
-      /* ---- RECIPE ---- */
-      if (mode === 'recipe') {
-        if (d.total_calories || d.total_price_idr) {
-          html += `<div class="stats-grid">
-            <div class="stat-card"><span class="stat-label">🔥 Kalori</span><span class="stat-value">${d.total_calories||'-'}</span><span class="stat-unit">kkal</span></div>
-            <div class="stat-card"><span class="stat-label">💰 Harga</span><span class="stat-value" style="font-size:.8rem">${d.total_price_idr?idr(d.total_price_idr):'-'}</span></div>
-            <div class="stat-card"><span class="stat-label">🍽️ Porsi</span><span class="stat-value">${d.serving_size||'-'}</span></div>
-            <div class="stat-card"><span class="stat-label">⏱️ Waktu</span><span class="stat-value">${d.preparation_time||'-'}</span></div>
-          </div>`;
-        }
-        if (d.ingredients?.length) {
-          html += `<div class="ingredients-wrap"><p class="section-title"><span>🥘</span> Bahan-bahan</p><div class="ingredients-list">`;
-          d.ingredients.forEach((ing,i) => {
-            html += `<div class="chat-ingredient-row">
-              <div class="chat-ing-name"><span>${i+1}.</span><span>${ing.name}</span><span class="chat-ing-qty">${ing.quantity} ${ing.unit||''}</span></div>
-              <span class="chat-ing-price">${idr(ing.price_idr||0)}</span>
-            </div>`;
-          });
-          html += `</div><div class="ingredients-total"><span>Total Estimasi:</span><span>${idr(d.ingredients.reduce((s,x)=>s+(x.price_idr||0),0))}</span></div></div>`;
-        }
-        if (d.cooking_steps?.length) {
-          html += `<div class="steps-wrap"><p class="section-title"><span>👨‍🍳</span> Langkah Memasak</p><div class="chat-steps-container">`;
-          d.cooking_steps.forEach((s,i) => {
-            html += `<div class="chat-step-item"><div class="chat-step-number">${i+1}</div><p class="chat-step-text">${s}</p></div>`;
-          });
-          html += `</div></div>`;
-        }
-        if (d.tips) {
-          html += `<div class="chat-tips-box"><div class="chat-tips-icon">💡</div><div class="chat-tips-content"><h4>Tips Chef</h4><p>${d.tips}</p></div></div>`;
-        }
-      }
-
-      /* ---- NUTRITION ---- */
-      else if (mode === 'nutrition') {
-        const n = d.nutrition || {};
-        html += `<div class="stats-grid" style="grid-template-columns:repeat(2,1fr)">
-          <div class="stat-card"><span class="stat-label">🔥 Kalori</span><span class="stat-value">${n.calories?.amount||'-'}</span><span class="stat-unit">${n.calories?.unit||'kkal'}</span></div>
-          <div class="stat-card"><span class="stat-label">💪 Protein</span><span class="stat-value">${n.protein?.amount||'-'}g</span></div>
-          <div class="stat-card"><span class="stat-label">🍞 Karbo</span><span class="stat-value">${n.carbohydrates?.amount||'-'}g</span></div>
-          <div class="stat-card"><span class="stat-label">🧈 Lemak</span><span class="stat-value">${n.fat?.amount||'-'}g</span></div>
-          <div class="stat-card"><span class="stat-label">🌾 Serat</span><span class="stat-value">${n.fiber?.amount||'-'}g</span></div>
-          <div class="stat-card"><span class="stat-label">🍬 Gula</span><span class="stat-value">${n.sugar?.amount||'-'}g</span></div>
-          <div class="stat-card"><span class="stat-label">🧂 Sodium</span><span class="stat-value">${n.sodium?.amount||'-'}</span><span class="stat-unit">${n.sodium?.unit||'mg'}</span></div>
-          <div class="stat-card"><span class="stat-label">📏 Porsi</span><span class="stat-value" style="font-size:.75rem">${d.serving_size||'100g'}</span></div>
-        </div>`;
-        if (d.health_benefits?.length) {
-          html += `<div class="chat-tips-box" style="flex-direction:column;gap:.5rem">
-            <p class="section-title" style="margin:0"><span>✅</span> Manfaat Kesehatan</p>
-            <ul style="list-style:disc;padding-left:1.2rem;color:#d1fae5;font-size:.875rem;line-height:1.7">
-              ${d.health_benefits.map(b=>`<li>${b}</li>`).join('')}
-            </ul>
-          </div>`;
-        }
-        if (d.ramadan_tips) {
-          html += `<div class="chat-tips-box"><div class="chat-tips-icon">🌙</div><div class="chat-tips-content"><h4>Tips Ramadan</h4><p>${d.ramadan_tips}</p></div></div>`;
-        }
-      }
-
-      /* ---- RECOMMEND ---- */
-      else if (mode === 'recommend') {
-        if (d.recommendations?.length) {
-          html += `<div style="display:flex;flex-direction:column;gap:.75rem">`;
-          d.recommendations.forEach(r => {
-            html += `<div style="padding:.75rem;border-radius:.75rem;background:rgba(6,78,59,0.4);border:1px solid rgba(16,185,129,0.15)">
-              <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
-                <span style="font-size:1.4rem">${r.icon||'🍽️'}</span>
-                <span style="font-weight:700;color:#d1fae5">${r.name}</span>
-                <span style="font-size:.7rem;padding:2px 8px;border-radius:999px;background:rgba(16,185,129,.2);color:#6ee7b7">${r.difficulty||'Mudah'}</span>
-              </div>
-              <p style="font-size:.85rem;color:rgba(209,250,229,.7);margin-bottom:.5rem">${r.description}</p>
-              <div style="display:flex;gap:1rem;font-size:.75rem;color:#6ee7b7">
-                <span>⏱️ ${r.time||'15 menit'}</span>
-                <span>🔥 ${r.calories||'-'}</span>
-              </div>
-              ${r.why_good ? `<p style="font-size:.78rem;color:#fcd34d;margin-top:.4rem">✨ ${r.why_good}</p>` : ''}
-            </div>`;
-          });
-          html += `</div>`;
-        }
-      }
-
-      /* ---- STORY ---- */
-      else if (mode === 'story') {
-        if (d.origin) {
-          html += `<div style="display:flex;gap:.75rem;margin-bottom:.75rem">
-            <div class="stat-card" style="flex:1"><span class="stat-label">📍 Asal Daerah</span><span class="stat-value" style="font-size:.8rem">${d.origin.region||'-'}</span></div>
-            <div class="stat-card" style="flex:1"><span class="stat-label">📅 Era</span><span class="stat-value" style="font-size:.8rem">${d.origin.era||'-'}</span></div>
-          </div>`;
-        }
-        if (d.story) {
-          html += `<div style="background:rgba(6,78,59,.3);border-radius:.75rem;padding:1rem;margin-bottom:.75rem;border:1px solid rgba(16,185,129,.1)">
-            <p style="font-size:.875rem;color:#d1fae5;line-height:1.7">${d.story.replace(/\n/g,'<br>')}</p>
-          </div>`;
-        }
-        if (d.cultural_significance) {
-          html += `<div class="chat-tips-box"><div class="chat-tips-icon">🕌</div><div class="chat-tips-content"><h4>Makna Budaya</h4><p>${d.cultural_significance}</p></div></div>`;
-        }
-        if (d.fun_facts?.length) {
-          html += `<div style="margin-top:.75rem">
-            <p class="section-title"><span>⭐</span> Fakta Menarik</p>
-            <ul style="list-style:none;padding:0;margin-top:.5rem;display:flex;flex-direction:column;gap:.4rem">
-              ${d.fun_facts.map((f,i)=>`<li style="font-size:.85rem;color:#fef3c7;padding:.4rem .75rem;background:rgba(251,191,36,.06);border-radius:.5rem;border-left:2px solid rgba(251,191,36,.3)">
-                <span style="color:#fbbf24;font-weight:700">${i+1}.</span> ${f}
-              </li>`).join('')}
-            </ul>
-          </div>`;
-        }
-      }
-
-      /* ---- IMAGE ---- */
-      else if (mode === 'image') {
-        if (d.image_url) {
-          html += `<div style="border-radius:.75rem;overflow:hidden;margin-bottom:.75rem;border:1px solid rgba(251,191,36,.2)">
-            <img src="${d.image_url}" alt="Gambar takjil generated" style="width:100%;height:auto;display:block"/>
-          </div>`;
-          html += `<a href="${d.image_url}" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:.5rem;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;font-size:.8rem;text-decoration:none">
-            ⬇️ Download Gambar (valid 24 jam)
-          </a>`;
-        }
-        if (d.visual_prompt) {
-          html += `<div style="margin-top:.75rem;padding:.75rem;background:rgba(6,78,59,.3);border-radius:.5rem;border:1px solid rgba(16,185,129,.1)">
-            <p style="font-size:.7rem;color:#6ee7b7;margin-bottom:.3rem">Prompt yang digunakan:</p>
-            <p style="font-size:.8rem;color:rgba(209,250,229,.7);line-height:1.5">${d.visual_prompt}</p>
-          </div>`;
-        }
-      }
-
-      /* ---- VIDEO ---- */
-      else if (mode === 'video') {
-        if (d.video_url) {
-          html += `<div style="border-radius:.75rem;overflow:hidden;margin-bottom:.75rem;border:1px solid rgba(251,191,36,.2);background:#000">
-            <video controls style="width:100%;height:auto;display:block;max-height:400px">
-              <source src="${d.video_url}" type="video/mp4"/>
-              Browser kamu tidak mendukung video.
-            </video>
-          </div>`;
-          html += `<a href="${d.video_url}" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:.5rem;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;font-size:.8rem;text-decoration:none">
-            ⬇️ Download Video (valid 24 jam)
-          </a>`;
-          html += `<div class="chat-tips-box" style="margin-top:.75rem"><div class="chat-tips-icon">⚠️</div><div class="chat-tips-content"><h4>Penting</h4><p>URL video hanya valid 24 jam. Segera download jika ingin disimpan.</p><p style="margin-top:.4rem;color:#fcd34d;">⏱️ Durasi video maksimal <strong>15 detik</strong> — ini batas dari API Alibaba Cloud, bukan dari Takjil.AI.</p></div></div>`;
-        }
-      }
-
-      // Follow-up suggestions
-      if (d.follow_up && d.follow_up.length) {
-        html += `<div class="follow-up-wrap">`;
-        d.follow_up.forEach(q => {
-          // escape quotes for onclick
-          const escaped = q.replace(/'/g, "\'");
-          html += `<button class="follow-up-btn" onclick="sendFollowUp('${escaped}')">💬 ${q}</button>`;
-        });
-        html += `</div>`;
-      }
-
-      html += `</div></div>`;
-      box.insertAdjacentHTML('beforeend', html);
-      box.scrollTop = box.scrollHeight;
-    }
-
-    function sendFollowUp(question) {
-      const input = $('chatInput');
-      input.value = question;
-      sendMessage();
-    }
-
-    /* Close dropdown on outside click */
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.upload-menu-wrap')) hide('uploadMenu');
+// =============================================================
+//  Takjil AI — Vercel Serverless Function
+//  Proxy aman ke Alibaba Cloud DashScope (Singapore region)
+//  API key tersimpan di Vercel Environment Variables, tidak
+//  pernah terekspos ke browser.
+// =============================================================
+
+const DASHSCOPE_BASE     = 'https://dashscope-intl.aliyuncs.com/api/v1';
+const DASHSCOPE_OPENAI   = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
+
+// Helper: DashScope native API (untuk image & video)
+async function dashscopeFetch(path, options = {}) {
+  const apiKey = process.env.DASHSCOPE_API_KEY;
+  if (!apiKey) throw new Error('DASHSCOPE_API_KEY belum diset di environment variables');
+
+  const url = `${DASHSCOPE_BASE}${path}`;
+  const res  = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      ...(options.headers || {}),
+    },
+  });
+  return res.json();
+}
+
+// Helper: OpenAI-compatible endpoint (untuk text/Qwen)
+async function dashscopeChat(model, messages, temperature = 0.7) {
+  const apiKey = process.env.DASHSCOPE_API_KEY;
+  if (!apiKey) throw new Error('DASHSCOPE_API_KEY belum diset di environment variables');
+
+  const res = await fetch(`${DASHSCOPE_OPENAI}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model, messages, temperature }),
+  });
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content || '';
+}
+
+// Helper: poll task sampai selesai (untuk image async & video)
+async function pollTask(taskId, intervalMs = 5000, maxTries = 60) {
+  for (let i = 0; i < maxTries; i++) {
+    await new Promise(r => setTimeout(r, intervalMs));
+    const result = await dashscopeFetch(`/tasks/${taskId}`);
+    const status = result?.output?.task_status;
+    if (status === 'SUCCEEDED') return result;
+    if (status === 'FAILED' || status === 'CANCELED') {
+      throw new Error(`Task ${status}: ${result?.message || 'Unknown error'}`);
+    }
+    // PENDING / RUNNING → lanjut poll
+  }
+  throw new Error('Timeout: task tidak selesai dalam waktu yang ditentukan');
+}
+
+// =============================================================
+//  MODE: recipe — generate resep lengkap via Qwen 3.5
+// =============================================================
+async function handleRecipe(userPrompt, deepThinking = false) {
+  const systemPrompt = deepThinking
+    ? `Kamu adalah chef AI master kelas dunia spesialis kuliner Ramadan Indonesia.
+Lakukan analisis mendalam dan berikan resep yang sangat detail dan profesional.
+Pertimbangkan: teknik memasak tradisional, variasi regional, tips nutrisi, dan substitusi bahan.
+Balas HANYA dengan JSON valid, tanpa teks lain, tanpa markdown code block.
+Format JSON wajib:
+{
+  "mode": "recipe",
+  "recipe_name": "Nama Takjil",
+  "description": "Deskripsi panjang dan menggugah selera",
+  "origin": "Asal daerah takjil ini",
+  "total_calories": 200,
+  "total_price_idr": 15000,
+  "serving_size": "4 Porsi",
+  "preparation_time": "20 Menit",
+  "difficulty": "Mudah/Sedang/Sulit",
+  "ingredients": [
+    {"name": "Nama Bahan", "quantity": 2, "unit": "buah", "price_idr": 5000, "substitution": "Alternatif bahan jika tidak ada"}
+  ],
+  "cooking_steps": ["Langkah sangat detail 1", "Langkah sangat detail 2"],
+  "tips": "Tips chef profesional yang sangat detail",
+  "variations": ["Variasi 1", "Variasi 2"],
+  "storage": "Cara penyimpanan",
+  "follow_up": ["Mau aku buatkan videonya?", "Mau lihat foto presentasinya?"]
+}`
+    : `Kamu adalah chef AI spesialis takjil Ramadan.
+Balas HANYA dengan JSON valid, tanpa teks lain, tanpa markdown code block.
+Format JSON wajib:
+{
+  "mode": "recipe",
+  "recipe_name": "Nama Takjil",
+  "description": "Deskripsi singkat",
+  "total_calories": 200,
+  "total_price_idr": 15000,
+  "serving_size": "4 Porsi",
+  "preparation_time": "20 Menit",
+  "ingredients": [
+    {"name": "Nama Bahan", "quantity": 2, "unit": "buah", "price_idr": 5000}
+  ],
+  "cooking_steps": ["Langkah 1", "Langkah 2"],
+  "tips": "Tips chef",
+  "follow_up": ["Mau aku buatkan foto-nya juga?", "Mau tau kandungan gizinya?"]
+}`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userPrompt }
+  ];
+  const model = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp  = deepThinking ? 0.9 : 0.7;
+  const raw   = await dashscopeChat(model, messages, temp);
+  const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  return JSON.parse(cleaned);
+}
+
+// =============================================================
+//  MODE: nutrition — info kalori & gizi via Qwen 3.5
+// =============================================================
+async function handleNutrition(userPrompt, deepThinking = false) {
+  const systemPrompt = `Kamu adalah ahli gizi spesialis makanan Ramadhan.
+Balas HANYA dengan JSON valid, tanpa teks lain, tanpa markdown code block.
+Format JSON wajib:
+{
+  "mode": "nutrition",
+  "recipe_name": "Nama Makanan",
+  "description": "Deskripsi singkat",
+  "serving_size": "1 porsi (100g)",
+  "nutrition": {
+    "calories":      {"amount": 200, "unit": "kkal", "daily_percent": 10},
+    "protein":       {"amount": 5,   "unit": "g",    "daily_percent": 10},
+    "carbohydrates": {"amount": 30,  "unit": "g",    "daily_percent": 10},
+    "fat":           {"amount": 8,   "unit": "g",    "daily_percent": 10},
+    "fiber":         {"amount": 2,   "unit": "g",    "daily_percent": 8},
+    "sugar":         {"amount": 15,  "unit": "g",    "daily_percent": 17},
+    "sodium":        {"amount": 120, "unit": "mg",   "daily_percent": 5}
+  },
+  "health_benefits": ["Manfaat 1", "Manfaat 2"],
+  "ramadan_tips": "Tips konsumsi saat Ramadhan",
+  "suitable_for": ["Anak-anak", "Dewasa"],
+  "follow_up": ["Mau aku buatkan resepnya?", "Mau lihat foto takjil ini?"]
+}`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userPrompt }
+  ];
+  const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp    = deepThinking ? 0.9 : 0.3;
+  const raw     = await dashscopeChat(model, messages, temp);
+  const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  return JSON.parse(cleaned);
+}
+
+// =============================================================
+//  MODE: recommend — rekomendasi dari bahan yang ada
+// =============================================================
+async function handleRecommend(userPrompt, deepThinking = false) {
+  const systemPrompt = `Kamu adalah chef kreatif spesialis takjil Ramadhan.
+Balas HANYA dengan JSON valid, tanpa teks lain, tanpa markdown code block.
+Format JSON wajib:
+{
+  "mode": "recommend",
+  "recipe_name": "Rekomendasi Takjil",
+  "description": "Berdasarkan bahan yang kamu miliki",
+  "recommendations": [
+    {
+      "name": "Nama Takjil",
+      "icon": "🍌",
+      "description": "Deskripsi singkat",
+      "difficulty": "Mudah",
+      "time": "15 menit",
+      "calories": "150 kkal",
+      "ingredients_needed": ["bahan 1", "bahan 2"],
+      "why_good": "Kenapa cocok untuk berbuka"
+    }
+  ],
+  "follow_up": ["Mau aku buatkan resep lengkapnya?", "Mau lihat foto salah satunya?"]
+}`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userPrompt }
+  ];
+  const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp    = deepThinking ? 0.9 : 0.8;
+  const raw     = await dashscopeChat(model, messages, temp);
+  const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  return JSON.parse(cleaned);
+}
+
+// =============================================================
+//  MODE: story — sejarah & asal usul takjil
+// =============================================================
+async function handleStory(userPrompt, deepThinking = false) {
+  const systemPrompt = `Kamu adalah sejarawan kuliner spesialis makanan Ramadhan Indonesia.
+Balas HANYA dengan JSON valid, tanpa teks lain, tanpa markdown code block.
+Format JSON wajib:
+{
+  "mode": "story",
+  "recipe_name": "Nama Takjil",
+  "description": "Tagline singkat",
+  "origin": {"region": "Daerah asal", "era": "Perkiraan era"},
+  "story": "Cerita sejarah panjang (2-3 paragraf)",
+  "cultural_significance": "Makna budaya dalam Ramadhan",
+  "fun_facts": ["Fakta 1", "Fakta 2", "Fakta 3"],
+  "regional_variations": ["Variasi 1", "Variasi 2"],
+  "follow_up": ["Mau aku buatkan resepnya?", "Mau lihat foto takjil ini?"]
+}`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userPrompt }
+  ];
+  const model   = deepThinking ? 'qwen-max' : 'qwen-plus';
+  const temp    = deepThinking ? 0.9 : 0.7;
+  const raw     = await dashscopeChat(model, messages, temp);
+  const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  return JSON.parse(cleaned);
+}
+
+// =============================================================
+//  MODE: image — generate gambar takjil via Qwen Image 2.0
+// =============================================================
+async function handleImage(userPrompt) {
+  // Buat prompt yang lebih deskriptif untuk hasil gambar lebih baik
+  // Bersihkan kata trigger dari prompt supaya AI fokus ke nama makanannya
+  const cleanPrompt = userPrompt
+    .replace(/berikan|buatkan|generate|buat|tampilkan|perlihatkan|foto|gambar|image|picture|visualisasi/gi, '')
+    .trim();
+
+  const imagePrompt = `Realistic high-quality food photography of Indonesian Ramadan takjil: ${cleanPrompt}. 
+Served in traditional bowl or glass, appetizing presentation, warm golden hour lighting, 
+wooden table background, vibrant colors, professional food photography, 
+8K resolution, mouth-watering, no text, no watermark.`;
+
+  const body = {
+    model: 'qwen-image-2.0-pro',
+    input: {
+      messages: [{
+        role: 'user',
+        content: [{ text: imagePrompt }]
+      }]
+    },
+    parameters: {
+      size: '1024*1024',
+      watermark: false,
+      prompt_extend: true,
+    }
+  };
+
+  const data = await dashscopeFetch('/services/aigc/multimodal-generation/generation', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+
+  const imageUrl = data?.output?.choices?.[0]?.message?.content?.[0]?.image;
+  if (!imageUrl) throw new Error('Gagal mendapatkan URL gambar dari API');
+
+  return {
+    mode: 'image',
+    recipe_name: 'Gambar Takjil Generated',
+    description: userPrompt,
+    image_url: imageUrl,
+    visual_prompt: imagePrompt,
+  };
+}
+
+// =============================================================
+//  MODE: video — generate video takjil via Wan2.6
+// =============================================================
+async function handleVideo(userPrompt) {
+  // Deteksi durasi dari prompt user (maks 10 detik per API limit)
+  let duration = 5;
+  const durMatch = userPrompt.match(/(\d+)\s*(detik|sekon|second|s)/i);
+  if (durMatch) {
+    const requested = parseInt(durMatch[1]);
+    duration = Math.min(Math.max(requested, 2), 15); // min 2s, max 15s (wan2.6-t2v limit)
+  }
+
+  // Step 1: Buat video prompt yang baik
+  const videoPrompt = `Indonesian Ramadan iftar food preparation: ${userPrompt}. 
+Cinematic food video, warm kitchen lighting, hands preparing traditional food, 
+close-up shots of ingredients, steam rising, beautiful plating, 
+professional cooking video style.`;
+
+  const body = {
+    model: 'wan2.6-t2v',
+    input: { prompt: videoPrompt },
+    parameters: {
+      size: '1280*720',
+      duration: duration,
+      watermark: false,
+      prompt_extend: true,
+    }
+  };
+
+  // Step 2: Submit task
+  const taskData = await dashscopeFetch('/services/aigc/video-generation/video-synthesis', {
+    method: 'POST',
+    headers: { 'X-DashScope-Async': 'enable' },
+    body: JSON.stringify(body),
+  });
+
+  const taskId = taskData?.output?.task_id;
+  if (!taskId) throw new Error('Gagal membuat task video');
+
+  // Step 3: Poll sampai selesai (video butuh 1-5 menit)
+  const result  = await pollTask(taskId, 8000, 45); // poll tiap 8 detik, max 45x = 6 menit
+  const videoUrl = result?.output?.video_url;
+  if (!videoUrl) throw new Error('Gagal mendapatkan URL video');
+
+  return {
+    mode: 'video',
+    recipe_name: 'Video Takjil Generated',
+    description: userPrompt,
+    video_url: videoUrl,
+    video_prompt: videoPrompt,
+  };
+}
+
+// =============================================================
+//  MODE: greeting — sapaan ramah dari Takjil.AI
+// =============================================================
+function isGreeting(prompt) {
+  const p = prompt.toLowerCase().trim();
+  const greetings = [
+    'halo', 'hai', 'hi', 'hello', 'hey', 'hei', 'hallo',
+    'selamat pagi', 'selamat siang', 'selamat sore', 'selamat malam',
+    'assalamu', 'assalamualaikum', 'waalaikumsalam', 'permisi',
+    'apa kabar', 'gimana kabar', 'siapa kamu', 'kamu siapa',
+    'apa itu takjil', 'takjil ai itu apa', 'perkenalkan', 'kenalan'
+  ];
+  return greetings.some(g => p.includes(g)) && p.length < 60;
+}
+
+function handleGreeting(prompt) {
+  const p = prompt.toLowerCase();
+  let reply = '';
+
+  if (p.includes('siapa') || p.includes('kamu') || p.includes('perkenalkan') || p.includes('kenalan') || p.includes('apa itu')) {
+    reply = `Halo! Aku **Takjil.AI** 🌙✨
+
+Aku adalah asisten AI spesialis takjil Ramadan yang dibuat dengan ❤️ menggunakan teknologi Alibaba Cloud.
+
+**Yang bisa aku lakukan:**
+- 👨‍🍳 **Resep** — buatkan resep takjil lengkap dengan bahan & langkah
+- 📊 **Nutrisi** — info kalori & kandungan gizi takjil
+- 💡 **Rekomendasi** — saran takjil dari bahan yang kamu punya
+- 📖 **Cerita** — sejarah & asal usul takjil Indonesia
+- 🎨 **Foto** — generate gambar takjil yang menggugah selera
+- 🎬 **Video** — buat video tutorial memasak takjil
+
+Mau mulai dengan apa? 😊`;
+  } else if (p.includes('apa kabar') || p.includes('gimana kabar')) {
+    reply = `Alhamdulillah baik! Siap membantu kamu menyiapkan takjil terbaik untuk Ramadan ini 🌙
+
+Mau resep takjil apa hari ini?`;
+  } else if (p.includes('pagi')) {
+    reply = `Selamat pagi! ☀️ Semoga harimu penuh berkah di bulan Ramadan ini.
+
+Sudah siap merencanakan takjil berbuka hari ini? Aku bisa bantu buatkan resep, foto, bahkan video tutorial-nya! 😊`;
+  } else if (p.includes('siang')) {
+    reply = `Selamat siang! 🌤️ Semangat puasanya ya!
+
+Mau aku bantu cariin ide takjil untuk berbuka nanti? Tinggal bilang bahan yang kamu punya, aku bisa rekomendasikan takjil yang cocok 😊`;
+  } else if (p.includes('sore')) {
+    reply = `Selamat sore! 🌅 Sebentar lagi buka puasa nih!
+
+Masih bingung mau buat takjil apa? Ceritain aja bahan yang ada di dapur, aku langsung kasih rekomendasinya! 🍹`;
+  } else if (p.includes('malam')) {
+    reply = `Selamat malam! 🌙 Semoga ibadah Ramadan hari ini penuh berkah.
+
+Ada yang bisa aku bantu untuk persiapan sahur atau takjil besok? 😊`;
+  } else if (p.includes('assalam') || p.includes('waalaikum')) {
+    reply = `Wa'alaikumsalam warahmatullahi wabarakatuh! 🌙
+
+Selamat datang di Takjil.AI! Aku siap membantu kamu menyiapkan takjil terbaik untuk berbuka puasa. Mau buat apa hari ini?`;
+  } else {
+    reply = `Halo! Selamat datang di **Takjil.AI** 🌙✨
+
+Aku siap membantu kamu menemukan, membuat, dan memvisualisasikan takjil Ramadan favoritmu!
+
+Coba tanyakan:
+- *"Resep es teler"*
+- *"Berikan foto kolak pisang"*
+- *"Buatkan video cara membuat cendol"*
+- *"Berapa kalori es campur?"*
+
+Mau mulai dengan apa? 😊`;
+  }
+
+  return {
+    mode: 'greeting',
+    recipe_name: 'Takjil.AI',
+    description: 'Asisten AI Takjil Ramadan',
+    greeting_text: reply,
+  };
+}
+
+// =============================================================
+//  INTENT DETECTION — deteksi mode dari kalimat bebas user
+// =============================================================
+function detectMode(prompt, explicitMode) {
+  const p = prompt.toLowerCase().trim();
+
+  // Greeting check — always wins
+  if (isGreeting(prompt)) return 'greeting';
+
+  // Media words ALWAYS win — even if explicitMode is set
+  // User bilang "foto" atau "video" = intent yang jelas, tidak bisa di-override
+  const videoWords = ['video', 'film', 'animasi', 'rekaman', 'klip', 'clip'];
+  const imageWords = ['foto', 'gambar', 'image', 'picture', 'visualisasi', 'ilustrasi'];
+  if (videoWords.some(w => p.includes(w))) return 'video';
+  if (imageWords.some(w => p.includes(w))) return 'image';
+
+  // Baru cek explicitMode (dari tombol template user)
+  if (explicitMode && explicitMode !== 'auto') return explicitMode;
+
+  // --- ACTION WORDS (kata kerja perintah) ---
+  // Semua variasi "minta sesuatu" dalam bahasa Indonesia sehari-hari
+  const actionWords = [
+    'bikinin', 'bikin', 'buatin', 'buatkan', 'buat', 'kasih', 'kasih tau',
+    'berikan', 'beri', 'tampilkan', 'tampilkan', 'tunjukin', 'tunjukkan',
+    'generate', 'bisa buat', 'tolong buat', 'cobain', 'coba buat',
+    'minta', 'pengen', 'pengen liat', 'mau liat', 'mau tau',
+    'cariin', 'cari', 'bagaimana cara', 'gimana cara', 'cara membuat',
+    'cara bikin', 'langkah', 'resep', 'tutorial'
+  ];
+
+  // --- MEDIA WORDS ---
+  // Cek intent lanjutan (nutrisi, recommend, story)
+
+  // --- NUTRITION KEYWORDS ---
+  const nutritionWords = [
+    'kalori', 'nutrisi', 'gizi', 'protein', 'karbohidrat', 'lemak',
+    'kandungan', 'nilai gizi', 'diet', 'kkal', 'berapa kalori', 'info gizi',
+    'kandungan gizi', 'seberapa sehat', 'vitamin', 'mineral'
+  ];
+  if (nutritionWords.some(w => p.includes(w))) return 'nutrition';
+
+  // --- RECOMMEND KEYWORDS ---
+  const recommendWords = [
+    'punya bahan', 'ada bahan', 'bahan yang ada', 'hanya punya', 'cuma punya',
+    'pakai bahan', 'sisa bahan', 'rekomendasi', 'rekomendasikan', 'sarankan',
+    'buat apa', 'masak apa', 'takjil apa', 'ide takjil', 'enaknya apa',
+    'mau buat apa', 'cocok apa', 'ada apa'
+  ];
+  if (recommendWords.some(w => p.includes(w))) return 'recommend';
+
+  // --- STORY KEYWORDS ---
+  const storyWords = [
+    'sejarah', 'asal', 'asal usul', 'asal-usul', 'cerita', 'kisah',
+    'tradisi', 'budaya', 'history', 'berasal', 'daerah mana', 'makna',
+    'filosofi', 'asal mula', 'kenapa disebut', 'mengapa namanya'
+  ];
+  if (storyWords.some(w => p.includes(w))) return 'story';
+
+  // Default: recipe
+  return 'recipe';
+}
+
+// =============================================================
+//  MAIN HANDLER — entry point Vercel
+// =============================================================
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin',  '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST')   return res.status(405).json({ success: false, error: 'Method not allowed' });
+
+  const { mode: rawMode, prompt, deepThinking = false } = req.body || {};
+
+  if (!prompt) {
+    return res.status(400).json({ success: false, error: 'prompt wajib diisi' });
+  }
+
+  // Selalu jalankan intent detection — mode dari frontend hanya sebagai hint
+  const mode = detectMode(prompt, rawMode);
+  console.log(`[generate] rawMode=${rawMode} → detectedMode=${mode}`);
+
+  try {
+    let data;
+
+    switch (mode) {
+      case 'greeting':  data = handleGreeting(prompt);                      break;
+      case 'recipe':    data = await handleRecipe(prompt, deepThinking);    break;
+      case 'nutrition': data = await handleNutrition(prompt, deepThinking); break;
+      case 'recommend': data = await handleRecommend(prompt, deepThinking); break;
+      case 'story':     data = await handleStory(prompt, deepThinking);     break;
+      case 'image':     data = await handleImage(prompt);     break;
+      case 'video':     data = await handleVideo(prompt);     break;
+      default:
+        return res.status(400).json({ success: false, error: `Mode tidak dikenal: ${mode}` });
+    }
+
+    return res.status(200).json({ success: true, data });
+
+  } catch (err) {
+    console.error(`[generate] Error mode=${mode}:`, err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Terjadi kesalahan pada server',
     });
-  </script>
-</body>
-</html>
+  }
+}
