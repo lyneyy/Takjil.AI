@@ -945,29 +945,21 @@
       addMessage('user', msg);
       input.value = '';
 
-      // Loading text — deteksi FRESH dari prompt saat itu, bukan mode sebelumnya
+      // Pesan loading berbeda untuk setiap kondisi
+      // Deteksi intent lokal untuk loading message
       const msgLower = msg.toLowerCase();
-      const isVideoPrompt = ['video','film','animasi','rekaman','klip'].some(k => msgLower.includes(k));
-      const isImagePrompt = ['foto','gambar','image','picture','visualisasi'].some(k => msgLower.includes(k));
-      const isGreetingPrompt = ['halo','hai','hi','hello','hey','assalam'].some(k => msgLower.includes(k));
+      const looksLikeVideo = ['video','film','animasi','buatkan video','buat video'].some(k => msgLower.includes(k));
+      const looksLikeImage = ['foto','gambar','image','berikan foto','buatkan foto','tampilkan','perlihatkan'].some(k => msgLower.includes(k));
+      const effectiveMode = currentMode !== 'recipe' ? currentMode : looksLikeVideo ? 'video' : looksLikeImage ? 'image' : currentMode;
 
-      const loadingText = isVideoPrompt
-        ? '🎬 Membuat video (maks 15 detik)... proses 1-5 menit, mohon tunggu ya!'
-        : isImagePrompt
+      const loadingText = effectiveMode === 'video' || looksLikeVideo
+        ? '🎬 Membuat video (maks 15 detik, proses 1-5 menit)... mohon tunggu ya! ⚠️ Durasi video max 15 detik'
+        : effectiveMode === 'image' || looksLikeImage
         ? '🎨 Membuat gambar... sebentar ya!'
-        : isGreetingPrompt
-        ? '💬 Menyapa...'
         : deepThinking
         ? '🧠 Deep Thinking aktif... menganalisis lebih mendalam dengan Qwen Max...'
         : '✨ Sedang diproses...';
-      // GREETING: handle langsung di frontend, tidak perlu hit API
-      if (isGreetingPrompt && msg.length < 60) {
-        removeMessage(loadingId);
-        const greetReply = handleGreetingFrontend(msg);
-        renderChatMessage({ mode: 'greeting', greeting_text: greetReply, follow_up: ['Mau resep takjil apa hari ini?', 'Mau aku buatkan foto takjil?'] });
-        return;
-      }
-
+      const loadingId = addMessage('loading', loadingText);
       $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
       collapseTemplatesOnFirstChat();
 
@@ -976,6 +968,7 @@
         const res = await fetch('/api/generate', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ mode: currentMode, prompt: msg, deepThinking, autoDetect: true }),
           body:    JSON.stringify({ mode: 'auto', prompt: msg, deepThinking }),
         });
 
@@ -1194,7 +1187,7 @@
           html += `<a href="${d.video_url}" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:.5rem;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;font-size:.8rem;text-decoration:none">
             ⬇️ Download Video (valid 24 jam)
           </a>`;
-          html += `<div class="chat-tips-box" style="margin-top:.75rem"><div class="chat-tips-icon">⚠️</div><div class="chat-tips-content"><h4>Penting</h4><p>URL video hanya valid 24 jam. Segera download jika ingin disimpan.</p><p style="margin-top:.4rem;color:#fcd34d;">⏱️ Durasi video maksimal <strong>15 detik</strong>.</p></div></div>`;
+          html += `<div class="chat-tips-box" style="margin-top:.75rem"><div class="chat-tips-icon">⚠️</div><div class="chat-tips-content"><h4>Penting</h4><p>URL video hanya valid 24 jam. Segera download jika ingin disimpan.</p><p style="margin-top:.4rem;color:#fcd34d;">⏱️ Durasi video maksimal <strong>15 detik</strong> — ini batas dari API Alibaba Cloud, bukan dari Takjil.AI.</p></div></div>`;
         }
       }
 
@@ -1212,27 +1205,6 @@
       html += `</div></div>`;
       box.insertAdjacentHTML('beforeend', html);
       box.scrollTop = box.scrollHeight;
-    }
-
-    function handleGreetingFrontend(msg) {
-      const p = msg.toLowerCase();
-      if (p.includes('siapa') || p.includes('kamu') || p.includes('perkenalkan') || p.includes('apa itu')) {
-        return 'Halo! Aku **Takjil.AI** 🌙✨\n\nAku asisten AI spesialis takjil Ramadan! Aku bisa:\n- 👨‍🍳 Buatkan **resep** takjil lengkap\n- 📊 Info **nutrisi & kalori**\n- 💡 **Rekomendasi** dari bahan yang kamu punya\n- 📖 **Sejarah** takjil Indonesia\n- 🎨 **Generate foto** takjil\n- 🎬 **Generate video** tutorial memasak\n\nMau mulai dengan apa? 😊';
-      } else if (p.includes('apa kabar') || p.includes('gimana kabar')) {
-        return 'Alhamdulillah baik! 😊 Siap membantu kamu menyiapkan takjil terbaik untuk Ramadan ini 🌙\n\nMau resep takjil apa hari ini?';
-      } else if (p.includes('pagi')) {
-        return 'Selamat pagi! ☀️ Semoga harimu penuh berkah di bulan Ramadan ini.\n\nSudah ada rencana mau buat takjil apa untuk berbuka nanti?';
-      } else if (p.includes('siang')) {
-        return 'Selamat siang! 🌤️ Semangat puasanya ya!\n\nMau aku bantu cariin ide takjil untuk berbuka nanti?';
-      } else if (p.includes('sore')) {
-        return 'Selamat sore! 🌅 Sebentar lagi buka puasa nih!\n\nMasih bingung mau buat takjil apa? Ceritain aja bahan yang ada di dapur! 🍹';
-      } else if (p.includes('malam')) {
-        return 'Selamat malam! 🌙 Semoga ibadah Ramadan hari ini penuh berkah.\n\nAda yang bisa aku bantu untuk persiapan sahur atau takjil besok?';
-      } else if (p.includes('assalam') || p.includes('waalaikum')) {
-        return 'Wa\'alaikumsalam warahmatullahi wabarakatuh! 🌙\n\nSelamat datang di Takjil.AI! Mau buat takjil apa hari ini?';
-      } else {
-        return 'Halo! Selamat datang di **Takjil.AI** 🌙✨\n\nAku siap membantu kamu menemukan, membuat, dan memvisualisasikan takjil Ramadan favoritmu!\n\nCoba tanyakan resep, minta foto, atau request video tutorial! 😊';
-      }
     }
 
     function sendFollowUp(question) {
