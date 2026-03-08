@@ -747,7 +747,7 @@
         <div class="template-card fade-up" style="animation-delay:.1s">
           <div class="template-preview"><span>🛒</span></div>
           <div class="template-body">
-            <p class="template-title">📝 Ide Resep</p>
+            <p class="template-title">📝 Daftar Belanja</p>
             <p class="template-desc">"Hanya punya pisang dan santan, buat takjil apa ya?"</p>
             <div class="template-actions">
               <button class="btn-primary" onclick="quickGenerate('recommend','Hanya memiliki bahan pisang dan santan, buat takjil apa ya? Berikan gambarannya!')">Generate</button>
@@ -802,7 +802,7 @@
 
   <footer>
     <p class="footer-text">Dibuat dengan ❤️ untuk Ramadan yang lebih bermakna</p>
-    <p class="footer-copy">Takjil.AI © 2024 • Hackathon Submission</p>
+    <p class="footer-copy">Takjil.AI © 2026 • sunibfiasretepnyleve</p>
   </footer>
 
   <!-- Hidden file inputs -->
@@ -1015,6 +1015,20 @@
        ============================================= */
     function renderChatMessage(d) {
       const mode = d.mode || currentMode;
+
+      // GREETING
+      if (mode === 'greeting') {
+        const text = d.greeting_text || '';
+        // Convert **bold** markdown and newlines to HTML
+        const formatted = text
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .split('\n').join('<br>');
+        html += `<div class="chat-greeting" style="line-height:1.7;color:#d1fae5;">${formatted}</div>`;
+        box.insertAdjacentHTML('beforeend', html);
+        box.scrollTop = box.scrollHeight;
+        return;
+      }
       const box  = $('chatMessages');
       const id   = 'msg-' + Date.now();
       let html   = `<div id="${id}" class="msg-row-ai fade-up" style="width:100%"><div class="msg-ai msg-ai-full">`;
