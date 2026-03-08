@@ -534,6 +534,14 @@
     .footer-star { display: flex; justify-content: center; align-items: center; gap: 0.5rem; color: #f59e0b; margin-bottom: 0.75rem; }
     .footer-text  { color: rgba(52,211,153,0.6); font-size: 0.875rem; margin-bottom: 0.25rem; }
     .footer-copy  { color: rgba(6,78,59,0.8); font-size: 0.75rem; font-family: monospace; }
+    .follow-up-wrap { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .85rem; }
+    .follow-up-btn  {
+      background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.35);
+      color: #6ee7b7; border-radius: 1.5rem; padding: .35rem .85rem;
+      font-size: .8rem; cursor: pointer; transition: all .2s;
+      white-space: nowrap;
+    }
+    .follow-up-btn:hover { background: rgba(16,185,129,.25); border-color: #6ee7b7; color: #fff; }
 
     /* =============================================
        SCROLLBAR
@@ -960,7 +968,7 @@
         const res = await fetch('/api/generate', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ mode: currentMode, prompt: msg, deepThinking, autoDetect: true }),
+          body:    JSON.stringify({ mode: 'auto', prompt: msg, deepThinking }),
         });
 
         const json = await res.json();
@@ -1182,9 +1190,26 @@
         }
       }
 
+      // Follow-up suggestions
+      if (d.follow_up && d.follow_up.length) {
+        html += `<div class="follow-up-wrap">`;
+        d.follow_up.forEach(q => {
+          // escape quotes for onclick
+          const escaped = q.replace(/'/g, "\'");
+          html += `<button class="follow-up-btn" onclick="sendFollowUp('${escaped}')">💬 ${q}</button>`;
+        });
+        html += `</div>`;
+      }
+
       html += `</div></div>`;
       box.insertAdjacentHTML('beforeend', html);
       box.scrollTop = box.scrollHeight;
+    }
+
+    function sendFollowUp(question) {
+      const input = $('chatInput');
+      input.value = question;
+      sendMessage();
     }
 
     /* Close dropdown on outside click */
