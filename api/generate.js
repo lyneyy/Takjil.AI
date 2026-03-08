@@ -333,67 +333,63 @@ wooden table background, vibrant colors, professional food photography,
 }
 
 // =============================================================
-//  MODE: video — via wan2.6-t2v (async, polling)
+//  MODE: video — FREE version: gambar sinematik + skrip tutorial
+//  (wan2.6-t2v berbayar, diganti wan2.6-image + qwen teks)
 // =============================================================
 async function handleVideo(userPrompt) {
-  // ✅ FIX: Durasi max 10s (batas wan2.6-t2v di Singapore = 5 atau 10s)
-  // Gunakan 5 sebagai default aman
-  let duration = 5;
-  const durMatch = userPrompt.match(/(\d+)\s*(detik|sekon|second|s\b)/i);
-  if (durMatch) {
-    const requested = parseInt(durMatch[1]);
-    duration = Math.min(Math.max(requested, 2), 10); // ✅ max 10s, bukan 15s
-  }
+  // Bersihkan kata trigger
+  const cleanPrompt = userPrompt
+    .replace(/video|film|animasi|tutorial|step by step|detik|buatkan|buat|pembuatan/gi, '')
+    .trim();
 
-  const videoPrompt = `Indonesian Ramadan iftar food preparation: ${userPrompt}. 
-Cinematic food video, warm kitchen lighting, hands preparing traditional food, 
-close-up shots of ingredients, steam rising, beautiful plating, 
-professional cooking video style.`;
+  // Step 1: Generate gambar sinematik via wan2.6-image (GRATIS)
+  const imagePrompt = `Cinematic food photography of Indonesian Ramadan iftar: ${cleanPrompt}. 
+Professional food styling, warm dramatic kitchen lighting, steam rising, 
+beautiful plating on wooden table, shallow depth of field, 
+4K cinematic quality, no text, no watermark.`;
 
-  const body = {
-    model: 'wan2.6-t2v',
-    input: { prompt: videoPrompt },
-    parameters: {
-      size: '1280*720',
-      duration: duration,
-      watermark: false,
-      prompt_extend: true,
-    }
+  const imgBody = {
+    model: 'wan2.6-image',
+    input: {
+      messages: [{
+        role: 'user',
+        content: [{ text: imagePrompt }]
+      }]
+    },
+    parameters: { size: '1280*720', watermark: false, prompt_extend: true, n: 1 }
   };
 
-  console.log('[handleVideo] Submitting task, duration=', duration);
-
-  // Step 1: Submit async task
-  // ✅ FIX: dashscopeFetch sudah handle error, jadi tidak perlu check manual
-  const taskData = await dashscopeFetch('/services/aigc/video-generation/video-synthesis', {
+  const imgData   = await dashscopeFetch('/services/aigc/multimodal-generation/generation', {
     method: 'POST',
-    headers: { 'X-DashScope-Async': 'enable' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(imgBody),
   });
+  const contentArr = imgData?.output?.choices?.[0]?.message?.content;
+  const imageUrl   = Array.isArray(contentArr) ? contentArr.find(c => c.image)?.image : null;
 
-  console.log('[handleVideo] taskData:', JSON.stringify(taskData));
+  // Step 2: Generate skrip tutorial via Qwen (GRATIS)
+  const scriptPrompt = `Buatkan skrip tutorial memasak singkat untuk: ${cleanPrompt}.
+Format skrip untuk video pendek (15 detik), gaya presenter TV masak Indonesia.
+Balas HANYA dengan JSON valid:
+{
+  "mode": "video",
+  "recipe_name": "Nama Masakan",
+  "description": "Tagline singkat",
+  "script_intro": "Kalimat pembuka presenter (1 kalimat)",
+  "steps": ["Step 1 singkat", "Step 2 singkat", "Step 3 singkat"],
+  "script_outro": "Kalimat penutup presenter (1 kalimat)",
+  "tips": "Tips singkat",
+  "follow_up": ["Mau resep lengkapnya?", "Mau lihat info nutrisinya?"]
+}`;
 
-  const taskId = taskData?.output?.task_id;
-  if (!taskId) {
-    throw new Error(`Gagal membuat task video. Response: ${JSON.stringify(taskData)}`);
-  }
-
-  console.log('[handleVideo] Task created, taskId=', taskId);
-
-  // Step 2: Poll sampai selesai
-  const result   = await pollTask(taskId, 8000, 45);
-  const videoUrl = result?.output?.video_url;
-  if (!videoUrl) {
-    console.error('[handleVideo] No video_url in result:', JSON.stringify(result));
-    throw new Error('Gagal mendapatkan URL video');
-  }
+  const scriptRaw  = await dashscopeChat('qwen-plus', [
+    { role: 'user', content: scriptPrompt }
+  ], 0.7, 1000);
+  const scriptData = parseJsonSafe(scriptRaw);
 
   return {
+    ...scriptData,
     mode: 'video',
-    recipe_name: 'Video Takjil Generated',
-    description: userPrompt,
-    video_url: videoUrl,
-    video_prompt: videoPrompt,
+    image_url: imageUrl,   // gambar sinematik sebagai pengganti video
   };
 }
 
