@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    { "source": "/api/generate", "destination": "/api/generate.js" }
+  ],
+  "functions": {
+    "api/generate.js": {
+      "maxDuration": 300
+    }
+  }
+}

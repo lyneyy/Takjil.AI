@@ -1,0 +1,15 @@
+.env
+
+# Vercel
+.vercel
+
+# Node.js (kalau nanti install package)
+node_modules/
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
