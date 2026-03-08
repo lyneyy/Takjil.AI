@@ -737,8 +737,8 @@
             <p class="template-title">🎬 Video Masakan</p>
             <p class="template-desc">"Video pembuatan Pisang Goreng untuk takjil"</p>
             <div class="template-actions">
-              <button class="btn-primary" onclick="quickGenerate('video','Video pembuatan Pisang Goreng selama 30 detik dengan tutorial step by step')">Generate</button>
-              <button class="btn-outline" onclick="openChatWithPrompt('video','Video pembuatan Pisang Goreng selama 30 detik dengan tutorial')">Edit</button>
+              <button class="btn-primary" onclick="quickGenerate('video','Video pembuatan Pisang Goreng 15 detik dengan tutorial step by step')">Generate</button>
+              <button class="btn-outline" onclick="openChatWithPrompt('video','Video pembuatan Pisang Goreng 15 detik dengan tutorial')">Edit</button>
             </div>
           </div>
         </div>
@@ -945,7 +945,7 @@
       const effectiveMode = currentMode !== 'recipe' ? currentMode : looksLikeVideo ? 'video' : looksLikeImage ? 'image' : currentMode;
 
       const loadingText = effectiveMode === 'video' || looksLikeVideo
-        ? '🎬 Membuat video (4-8 detik)... proses butuh 2-5 menit, mohon tunggu ya!'
+        ? '🎬 Membuat video (maks 15 detik, proses 1-5 menit)... mohon tunggu ya! ⚠️ Durasi video max 15 detik'
         : effectiveMode === 'image' || looksLikeImage
         ? '🎨 Membuat gambar... sebentar ya!'
         : deepThinking
@@ -1178,7 +1178,7 @@
           html += `<a href="${d.video_url}" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:.5rem;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;font-size:.8rem;text-decoration:none">
             ⬇️ Download Video (valid 24 jam)
           </a>`;
-          html += `<div class="chat-tips-box" style="margin-top:.75rem"><div class="chat-tips-icon">⚠️</div><div class="chat-tips-content"><h4>Penting</h4><p>URL video hanya valid 24 jam. Segera download jika ingin disimpan.</p></div></div>`;
+          html += `<div class="chat-tips-box" style="margin-top:.75rem"><div class="chat-tips-icon">⚠️</div><div class="chat-tips-content"><h4>Penting</h4><p>URL video hanya valid 24 jam. Segera download jika ingin disimpan.</p><p style="margin-top:.4rem;color:#fcd34d;">⏱️ Durasi video maksimal <strong>15 detik</strong> — ini batas dari API Alibaba Cloud, bukan dari Takjil.AI.</p></div></div>`;
         }
       }
 
