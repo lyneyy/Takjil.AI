@@ -695,7 +695,7 @@
         </div>
       </div>
 
-      <p class="chat-disclaimer">✨ Konten dibuat oleh AI untuk inspirasi takjil Ramadan</p>
+      <p class="chat-disclaimer">Takjil.AI adalah AI dan berpotensi tidak akurat. Mohon dicek kembali jawaban yang diberikan.</p>
     </section>
 
     <!-- Template Toggle Bar -->
@@ -945,7 +945,7 @@
       const effectiveMode = currentMode !== 'recipe' ? currentMode : looksLikeVideo ? 'video' : looksLikeImage ? 'image' : currentMode;
 
       const loadingText = effectiveMode === 'video' || looksLikeVideo
-        ? '🎬 Membuat video... ini butuh 2-5 menit, mohon tunggu ya!'
+        ? '🎬 Membuat video (4-8 detik)... proses butuh 2-5 menit, mohon tunggu ya!'
         : effectiveMode === 'image' || looksLikeImage
         ? '🎨 Membuat gambar... sebentar ya!'
         : deepThinking
