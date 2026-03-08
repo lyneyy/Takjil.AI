@@ -272,7 +272,7 @@ async function handleVideo(userPrompt) {
   const durMatch = userPrompt.match(/(\d+)\s*(detik|sekon|second|s)/i);
   if (durMatch) {
     const requested = parseInt(durMatch[1]);
-    duration = Math.min(Math.max(requested, 3), 10); // min 3s, max 10s (API limit)
+    duration = Math.min(Math.max(requested, 2), 15); // min 2s, max 15s (wan2.6-t2v limit)
   }
 
   // Step 1: Buat video prompt yang baik
